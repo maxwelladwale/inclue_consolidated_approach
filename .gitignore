@@ -1,0 +1,38 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyc
+
+# macOS Finder files
+.DS_Store
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+*.bak
+
+# Log files
+*.log
+
+# Compiled assets (if using Web modules)
+*.zip
+*.min.js
+*.min.css
+
+# Python virtual environment or local testing
+.env
+.venv/
+venv/
+
+# Node modules (if applicable)
+node_modules/
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Test databases or dump files
+*.sql
+*.sqlite3
+*.db
