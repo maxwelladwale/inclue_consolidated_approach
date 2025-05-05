@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Cron job to create follow-up sessions -->
+        <record id="ir_cron_create_followup_sessions" model="ir.cron">
+            <field name="name">iN-Clue: Create Follow-up Sessions</field>
+            <field name="model_id" ref="model_inclue_participant"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_create_followup_sessions()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall" eval="False"/>
+        </record>
+        
+        <!-- Cron job to send reminder emails -->
+        <record id="ir_cron_send_survey_reminders" model="ir.cron">
+            <field name="name">iN-Clue: Send Survey Reminders</field>
+            <field name="model_id" ref="model_inclue_participant"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_send_reminders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_inclue_survey_config_user,inclue.survey.config.user,model_inclue_survey_config,group_inclue_user,1,0,0,0
+access_inclue_survey_config_manager,inclue.survey.config.manager,model_inclue_survey_config,group_inclue_manager,1,1,1,1
+access_inclue_participant_user,inclue.participant.user,model_inclue_participant,group_inclue_user,1,1,1,0
+access_inclue_participant_manager,inclue.participant.manager,model_inclue_participant,group_inclue_manager,1,1,1,1

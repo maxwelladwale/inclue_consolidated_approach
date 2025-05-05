@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_inclue_participant_tree" model="ir.ui.view">
+        <field name="name">inclue.participant.tree</field>
+        <field name="model">inclue.participant</field>
+        <field name="arch" type="xml">
+            <tree string="Participants">
+                <field name="name"/>
+                <field name="email"/>
+                <field name="event_id"/>
+                <field name="session_type"/>
+                <field name="facilitator_id"/>
+                <field name="survey_sent"/>
+                <field name="survey_completed"/>
+                <field name="date_completed"/>
+                <field name="next_session_date"/>
+                <button name="send_survey" 
+                        type="object" 
+                        string="Send Survey" 
+                        attrs="{'invisible': [('survey_sent', '=', True)]}"
+                        icon="fa-envelope"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Form View -->
+    <record id="view_inclue_participant_form" model="ir.ui.view">
+        <field name="name">inclue.participant.form</field>
+        <field name="model">inclue.participant</field>
+        <field name="arch" type="xml">
+            <form string="Participant">
+                <header>
+                    <button name="send_survey" 
+                            type="object" 
+                            string="Send Survey" 
+                            class="oe_highlight"
+                            attrs="{'invisible': [('survey_sent', '=', True)]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="email"/>
+                            <field name="team_lead_name"/>
+                            <field name="company_name"/>
+                            <field name="event_id"/>
+                            <field name="session_type"/>
+                            <field name="facilitator_id"/>
+                        </group>
+                        <group>
+                            <field name="survey_sent"/>
+                            <field name="survey_started"/>
+                            <field name="survey_completed"/>
+                            <field name="date_sent"/>
+                            <field name="date_started"/>
+                            <field name="date_completed"/>
+                            <field name="next_session_date"/>
+                        </group>
+                    </group>
+                    <group string="Access Information">
+                        <field name="access_token"/>
+                        <field name="survey_url" widget="url"/>
+                        <field name="user_input_id"/>
+                    </group>
+                    <group string="Journey Information">
+                        <field name="previous_participant_id"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Search View -->
+    <record id="view_inclue_participant_search" model="ir.ui.view">
+        <field name="name">inclue.participant.search</field>
+        <field name="model">inclue.participant</field>
+        <field name="arch" type="xml">
+            <search string="Search Participants">
+                <field name="name"/>
+                <field name="email"/>
+                <field name="event_id"/>
+                <field name="facilitator_id"/>
+                <field name="session_type"/>
+                <filter string="Survey Sent" name="survey_sent" domain="[('survey_sent', '=', True)]"/>
+                <filter string="Survey Completed" name="survey_completed" domain="[('survey_completed', '=', True)]"/>
+                <separator/>
+                <filter string="Due for Follow-up" name="due_followup" 
+                        domain="[('next_session_date', '!=', False), ('next_session_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Event" name="group_event" context="{'group_by': 'event_id'}"/>
+                    <filter string="Session Type" name="group_session" context="{'group_by': 'session_type'}"/>
+                    <filter string="Facilitator" name="group_facilitator" context="{'group_by': 'facilitator_id'}"/>
+                    <filter string="Completion Status" name="group_completed" context="{'group_by': 'survey_completed'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Action -->
+    <record id="action_inclue_participant" model="ir.actions.act_window">
+        <field name="name">Participants</field>
+        <field name="res_model">inclue.participant</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add participants to iN-Clue Journey
+            </p>
+        </field>
+    </record>
+</odoo>

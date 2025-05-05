@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Create our own module category -->
+        <record id="module_category_inclue_journey" model="ir.module.category">
+            <field name="name">iN-Clue Journey</field>
+            <field name="description">iN-Clue Journey Management</field>
+            <field name="sequence">50</field>
+        </record>
+        
+        <!-- Access Groups -->
+        <record id="group_inclue_user" model="res.groups">
+            <field name="name">iN-Clue User</field>
+            <field name="category_id" ref="module_category_inclue_journey"/>
+        </record>
+        
+        <record id="group_inclue_manager" model="res.groups">
+            <field name="name">iN-Clue Manager</field>
+            <field name="category_id" ref="module_category_inclue_journey"/>
+            <field name="implied_ids" eval="[(4, ref('group_inclue_user'))]"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_event_form_inclue_inherit" model="ir.ui.view">
+        <field name="name">event.event.form.inclue</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="arch" type="xml">
+            <!-- Add iN-Clue fields -->
+            <xpath expr="//field[@name='organizer_id']" position="after">
+                <field name="is_inclue_event"/>
+                <field name="session_type" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
+                <field name="facilitator_id" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
+            </xpath>
+            
+            <!-- Add Send Surveys button -->
+            <xpath expr="//header" position="inside">
+                <button name="action_send_surveys"
+                        type="object"
+                        string="Send Surveys"
+                        class="oe_highlight"
+                        attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
+            </xpath>
+            
+            <!-- Add iN-Clue tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="iN-Clue Journey" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
+                    <group>
+                        <field name="survey_id" readonly="1"/>
+                    </group>
+                    <field name="participant_ids" context="{'default_event_id': id}">
+                        <tree editable="bottom">
+                            <field name="name"/>
+                            <field name="email"/>
+                            <field name="team_lead_name"/>
+                            <field name="company_name"/>
+                            <field name="survey_sent"/>
+                            <field name="survey_completed"/>
+                            <button name="send_survey" 
+                                    type="object" 
+                                    string="Send Survey" 
+                                    attrs="{'invisible': [('survey_sent', '=', True)]}"
+                                    icon="fa-envelope"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Tree View with iN-Clue info -->
+    <record id="view_event_tree_inclue_inherit" model="ir.ui.view">
+        <field name="name">event.event.tree.inclue</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="is_inclue_event" optional="show"/>
+                <field name="session_type" optional="show"/>
+                <field name="facilitator_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Search View -->
+    <record id="view_event_search_inclue_inherit" model="ir.ui.view">
+        <field name="name">event.event.search.inclue</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="iN-Clue Events" name="inclue_events" domain="[('is_inclue_event', '=', True)]"/>
+                <separator/>
+                <filter string="Session Type" name="group_session_type" context="{'group_by': 'session_type'}"/>
+                <filter string="Facilitator" name="group_facilitator" context="{'group_by': 'facilitator_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inclue_inherit" model="ir.ui.view">
+        <field name="name">res.partner.form.inclue</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_facilitator"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="iN-Clue Facilitator" attrs="{'invisible': [('is_facilitator', '=', False)]}">
+                    <group>
+                        <field name="facilitation_count"/>
+                    </group>
+                    <field name="facilitated_event_ids" readonly="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="date_begin"/>
+                            <field name="session_type"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

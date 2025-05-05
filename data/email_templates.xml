@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Survey Invitation Template -->
+    <record id="email_template_survey_invitation" model="mail.template">
+        <field name="name">iN-Clue Survey Invitation</field>
+        <field name="model_id" ref="model_inclue_participant"/>
+        <field name="subject">iN-Clue Journey - Survey Invitation</field>
+        <field name="email_from">noreply@inclue.com</field>
+        <field name="email_to"><t t-out="object.email"/></field>
+        <field name="auto_delete" eval="False"/>
+        <field name="body_html"><![CDATA[
+        <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;">
+          <div style="background-color: #008f8c; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">iN-Clue Journey</h1>
+          </div>
+
+          <div style="padding: 20px; background-color: #f9f9f9;">
+            <p>Dear <t t-out="object.name"/>,</p>
+
+            <p>Thank you for participating in the <strong><t t-out="object.session_type"/></strong> session of the iN-Clue Journey.</p>
+
+            <p>Please take a moment to complete your survey by clicking the button below:</p>
+
+            <p style="margin: 20px 0; text-align: center;">
+              <a t-att-href="object.survey_url" target="_blank"
+                style="background-color: #008f8c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                Complete Survey
+              </a>
+            </p>
+
+            <p><strong>Session Details:</strong></p>
+            <ul style="list-style: none; padding-left: 0;">
+              <li>📅 Event: <t t-out="object.event_id.name"/></li>
+              <li>👤 Facilitator: <t t-out="object.facilitator_id.name"/></li>
+              <li>👥 Team Lead: <t t-out="object.team_lead_name"/></li>
+              <li>🏢 Company: <t t-out="object.company_name"/></li>
+            </ul>
+
+            <p>This survey link is unique to you and requires no login.</p>
+
+            <p>Thank you for your participation!</p>
+
+            <p>Best regards,<br/>The iN-Clue Team</p>
+          </div>
+
+          <div style="background-color: #333; color: white; padding: 10px; text-align: center; font-size: 12px;">
+            <p style="margin: 0;">© 2024 iN-Clue Journey. All rights reserved.</p>
+          </div>
+        </div>
+        ]]></field>
+    </record>
+</odoo>
