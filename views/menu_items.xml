@@ -23,4 +23,10 @@
               parent="menu_inclue_config"
               action="action_inclue_survey_config"
               sequence="10"/>
+
+    <menuitem id="menu_inclue_facilitator_orders"
+                name="Facilitator Orders"
+                parent="menu_inclue_config"
+                action="action_inclue_facilitator_order"
+                sequence="15"/>
 </odoo>

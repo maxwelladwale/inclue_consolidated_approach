@@ -3,3 +3,6 @@ access_inclue_survey_config_user,inclue.survey.config.user,model_inclue_survey_c
 access_inclue_survey_config_manager,inclue.survey.config.manager,model_inclue_survey_config,group_inclue_manager,1,1,1,1
 access_inclue_participant_user,inclue.participant.user,model_inclue_participant,group_inclue_user,1,1,1,0
 access_inclue_participant_manager,inclue.participant.manager,model_inclue_participant,group_inclue_manager,1,1,1,1
+
+access_inclue_facilitator_order_user,inclue.facilitator.order.user,model_inclue_facilitator_order,base.group_user,1,1,1,0
+access_inclue_facilitator_order_manager,inclue.facilitator.order.manager,model_inclue_facilitator_order,event.group_event_manager,1,1,1,1
