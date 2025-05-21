@@ -29,6 +29,8 @@ class InclueParticipant(models.Model):
     survey_started = fields.Boolean('Survey Started', default=False)
     survey_completed = fields.Boolean('Survey Completed', default=False, tracking=True)
     
+    is_latest = fields.Boolean('Is Latest', default=True, tracking=True)
+
     date_sent = fields.Datetime('Date Sent')
     date_started = fields.Datetime('Date Started')
     date_completed = fields.Datetime('Date Completed')
@@ -309,3 +311,43 @@ class InclueParticipant(models.Model):
         except ValueError:
             pass
         return None
+    
+
+    def advance_to_next_session(self):
+        """Creates a new participant record for the next session if available."""
+        session_order = ['kickoff', 'followup1', 'followup2', 'followup3', 'followup4', 'followup5', 'followup6']
+        
+        if self.session_type not in session_order:
+            raise ValueError("Unknown session type.")
+        
+        current_index = session_order.index(self.session_type)
+        if current_index + 1 >= len(session_order):
+            raise ValueError("Already at the last session.")
+
+        next_session_type = session_order[current_index + 1]
+
+        next_event = self.env['event.event'].sudo().search([
+            ('facilitator_id', '=', self.facilitator_id.id),
+            ('session_type', '=', next_session_type)
+        ], limit=1)
+
+        if not next_event:
+            raise ValueError(f"No event found for session type '{next_session_type}'.")
+
+        # Mark current as not latest
+        self.is_latest = False
+
+        new_participant = self.copy({
+            'event_id': next_event.id,
+            'previous_participant_id': self.id,
+            'is_latest': True,
+            'survey_sent': False,
+            'survey_started': False,
+            'survey_completed': False,
+            'date_sent': False,
+            'date_started': False,
+            'date_completed': False,
+            'user_input_id': False
+        })
+
+        return new_participant
