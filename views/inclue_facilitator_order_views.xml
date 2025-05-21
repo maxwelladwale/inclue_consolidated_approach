@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <data>
+    <!-- ========================================= -->
+    <!-- Form View                                 -->
+    <!-- ========================================= -->
+    <record id="view_inclue_facilitator_order_form" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.form</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="arch" type="xml">
+        <form string="Facilitator Order">
+          <header>
+            <button name="action_confirm" string="Confirm Order" type="object"
+                    class="oe_highlight" states="draft"/>
+            <button name="action_invoice" string="Create Invoice" type="object"
+                    class="oe_highlight" states="confirmed"/>
+            <button name="action_set_shipped" string="Mark Shipped" type="object"
+                    class="oe_highlight" states="invoiced"/>
+            <button name="action_set_done" string="Mark Done" type="object"
+                    class="oe_highlight" states="shipped"/>
+            <button name="action_cancel" string="Cancel Order" type="object"
+                    states="draft,confirmed,invoiced"/>
+            <button name="action_view_invoice" 
+                    type="object" 
+                    string="View Invoice" 
+                    class="oe_highlight" 
+                    attrs="{'invisible': [('invoice_id', '=', False)]}"/>
+            <field name="state" widget="statusbar"
+                   statusbar_visible="draft,confirmed,invoiced,shipped,done"/>
+          </header>
+          <sheet>
+            <div class="oe_title">
+              <h1><field name="name" readonly="1"/></h1>
+            </div>
+            <group>
+              <group string="Facilitator Information">
+                <field name="facilitator_id" options="{'no_create': True}"/>
+                <field name="facilitator_type" widget="radio"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+              </group>
+              <group string="Order Details">
+                <field name="create_date" readonly="1" string="Order Date"/>
+                <field name="has_been_processed" readonly="1"/>
+                <field name="invoice_id" readonly="1"
+                       attrs="{'invisible': [('invoice_id','=', False)]}"/>
+              </group>
+            </group>
+            <notebook>
+              <page string="Card Order Details">
+                <group>
+                  <group string="Free Items">
+                    <field name="gift_card_qty"/>
+                    <field name="followup_card_qty"/>
+                  </group>
+                  <group string="Paid Items">
+                    <field name="participant_deck_qty"/>
+                    <field name="facilitator_deck_qty"/>
+
+                  </group>
+                </group>
+              </page>
+              <page string="Shipping Information">
+                <group>
+                  <field name="shipping_address"/>
+                  <field name="shipping_country_id" options="{'no_create': True}"/>
+                  <field name="contact_person"/>
+                </group>
+              </page>
+              <page string="Invoice Information">
+                <group>
+                  <field name="invoice_company_name"/>
+                  <field name="invoice_address"/>
+                  <field name="invoice_country_id" options="{'no_create': True}"/>
+                  <field name="po_number"/>
+                  <field name="total_price" widget="monetary"/>
+                </group>
+              </page>
+            </notebook>
+          </sheet>
+          <div class="oe_chatter">
+            <field name="message_follower_ids"/>
+            <field name="activity_ids"/>
+            <field name="message_ids"/>
+          </div>
+        </form>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Tree (List) View                          -->
+    <!-- ========================================= -->
+    <record id="view_inclue_facilitator_order_tree" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.tree</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="arch" type="xml">
+        <tree string="Facilitator Orders"
+              decoration-info="state == 'draft'"
+              decoration-success="state == 'done'"
+              decoration-muted="state == 'cancel'">
+          <field name="name"/>
+          <field name="facilitator_id"/>
+          <field name="facilitator_type"/>
+          <field name="company_id" groups="base.group_multi_company"/>
+          <field name="create_date" string="Order Date"/>
+          <field name="shipping_country_id"/>
+          <field name="total_price" sum="Total"/>
+          <field name="state"/>
+        </tree>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Search View                               -->
+    <!-- ========================================= -->
+    <record id="view_inclue_facilitator_order_search" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.search</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="arch" type="xml">
+        <search string="Search Facilitator Orders">
+          <field name="name"/>
+          <field name="facilitator_id"/>
+          <field name="facilitator_type"/>
+          <field name="shipping_country_id"/>
+          <field name="invoice_company_name"/>
+          <field name="contact_person"/>
+          <separator/>
+          <filter string="In-House Facilitators" name="internal_facilitators" domain="[('facilitator_type','=','internal')]"/>
+          <filter string="External Facilitators" name="external_facilitators" domain="[('facilitator_type','=','external')]"/>
+          <separator/>
+          <filter string="Draft" name="state_draft" domain="[('state','=','draft')]"/>
+          <filter string="Confirmed" name="state_confirmed" domain="[('state','=','confirmed')]"/>
+          <filter string="Invoiced" name="state_invoiced" domain="[('state','=','invoiced')]"/>
+          <filter string="Shipped" name="state_shipped" domain="[('state','=','shipped')]"/>
+          <filter string="Done" name="state_done" domain="[('state','=','done')]"/>
+          <filter string="Cancelled" name="state_cancel" domain="[('state','=','cancel')]"/>
+          <separator/>
+          <filter string="This Month" name="this_month"
+                  domain="[('create_date','&gt;=',
+                            (context_today()+relativedelta(day=1))
+                             .strftime('%Y-%m-%d'))]"/>
+          <group expand="0" string="Group By">
+            <filter string="Facilitator" name="group_by_facilitator" context="{'group_by':'facilitator_id'}"/>
+            <filter string="Facilitator Type" name="group_by_facilitator_type" context="{'group_by':'facilitator_type'}"/>
+            <filter string="Shipping Country" name="group_by_country" context="{'group_by':'shipping_country_id'}"/>
+            <filter string="Status" name="group_by_state" context="{'group_by':'state'}"/>
+            <filter string="Month" name="group_by_month" context="{'group_by':'create_date:month'}"/>
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Action                                    -->
+    <!-- ========================================= -->
+    <record id="action_inclue_facilitator_order" model="ir.actions.act_window">
+      <field name="name">Facilitator Orders</field>
+      <field name="res_model">inclue.facilitator.order</field>
+      <field name="view_mode">tree,form</field>
+      <field name="search_view_id" ref="view_inclue_facilitator_order_search"/>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+          Create your first facilitator order
+        </p>
+        <p>
+          This view allows you to create and manage card orders for both in-house and external facilitators.
+        </p>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Menu Item                                 -->
+    <!-- ========================================= -->
+    <!-- <menuitem id="menu_inclue_facilitator_orders"
+              name="Facilitator Orders"
+              parent="inclue_consolidated_approach.menu_inclue_config"
+              action="action_inclue_facilitator_order"
+              sequence="15"/> -->
+  </data>
+</odoo>
