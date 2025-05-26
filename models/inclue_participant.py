@@ -3,6 +3,8 @@ import string
 from datetime import timedelta
 from odoo import models, fields, api
 import logging
+import uuid
+
 
 _logger = logging.getLogger(__name__)
 
@@ -24,171 +26,95 @@ class InclueParticipant(models.Model):
     access_token = fields.Char('Access Token', readonly=True, copy=False)
     survey_url = fields.Char('Survey URL', compute='_compute_survey_url')
     
-    # Status fields
-    survey_sent = fields.Boolean('Survey Sent', default=False, tracking=True)
+    survey_sent = fields.Boolean('Survey Sent', default=True, tracking=True)
     survey_started = fields.Boolean('Survey Started', default=False)
     survey_completed = fields.Boolean('Survey Completed', default=False, tracking=True)
+    survey_state = fields.Selection([
+        ('new', 'New'),
+        ('in_progress', 'In Progress'),
+        ('done', 'Completed')
+    ], string='Survey State', compute='_compute_survey_state', store=True)
     
     is_latest = fields.Boolean('Is Latest', default=True, tracking=True)
 
-    date_sent = fields.Datetime('Date Sent')
+    date_sent = fields.Datetime('Date Sent', default=fields.Datetime.now)  # Auto-set
     date_started = fields.Datetime('Date Started')
     date_completed = fields.Datetime('Date Completed')
     
-    # Follow-up tracking
-    next_session_date = fields.Date('Next Session Date', compute='_compute_next_session', store=True)
     previous_participant_id = fields.Many2one('inclue.participant', string='Previous Participation')
-    
     user_input_id = fields.Many2one('survey.user_input', string='Survey Response', readonly=True)
+    
+    def _ensure_survey_assignment(self):
+        """Ensure participant has proper survey and user_input setup"""
+        if not self.survey_id:
+            _logger.warning(f"Participant {self.id} has no survey_id - event {self.event_id.name} not configured")
+            return False
+            
+        if not self.user_input_id and self.survey_id:
+            user_input = self.env['survey.user_input'].create({
+                'survey_id': self.survey_id.id,
+                'email': self.email,
+                'nickname': self.name,
+                'state': 'new'
+            })
+            self.user_input_id = user_input.id
+            self.access_token = user_input.access_token
+            _logger.info(f"Created missing user_input {user_input.id} for participant {self.id}")
+            return True
+        
+        return True
     
     @api.model
     def create(self, vals):
-        if not vals.get('access_token'):
-            vals['access_token'] = self._generate_token()
-        return super().create(vals)
-    
-    def _generate_token(self):
-        """Generate a secure random token"""
-        return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
-    
-    # @api.depends('survey_id', 'access_token')
-    # def _compute_survey_url(self):
-    #     base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-    #     for record in self:
-    #         if record.survey_id and record.access_token:
-    #             record.survey_url = f"{base_url}/survey/start/{record.survey_id.id}/{record.access_token}"
-    #         else:
-    #             record.survey_url = False
+        vals['survey_sent'] = True
+        vals['date_sent'] = fields.Datetime.now()
+        
+        participant = super().create(vals)
+        
+        if participant._ensure_survey_assignment():
+            participant.send_survey()
+        
+        return participant
 
-    @api.depends('survey_id', 'access_token')
+    @api.depends('user_input_id.state')
+    def _compute_survey_state(self):
+        """Sync survey state with user_input state and update related fields"""
+        for rec in self:
+            if rec.user_input_id:
+                rec.survey_state = rec.user_input_id.state
+                
+                if rec.user_input_id.state == 'in_progress':
+                    if not rec.survey_started:
+                        rec.survey_started = True
+                        rec.date_started = fields.Datetime.now()
+                    rec.survey_completed = False
+                    
+                elif rec.user_input_id.state == 'done':
+                    rec.survey_started = True
+                    if not rec.survey_completed:
+                        rec.survey_completed = True
+                        rec.date_completed = fields.Datetime.now()
+                        
+                else:
+                    rec.survey_started = False
+                    rec.survey_completed = False
+            else:
+                rec.survey_state = 'new'
+    
+    @api.depends('survey_id', 'user_input_id')
     def _compute_survey_url(self):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        for record in self:
-            if record.survey_id and record.access_token:
-                # Use the standard Odoo survey URL format
-                survey = record.survey_id
-                record.survey_url = f"{base_url}/survey/start/{survey.access_token}/{record.access_token}"
+        for rec in self:
+            if rec.survey_id and rec.user_input_id:
+                rec.survey_url = f"{base_url}/survey/inclue/{rec.survey_id.access_token}/{rec.user_input_id.access_token}"
+                _logger.info(f"Generated custom URL: {rec.survey_url}")
             else:
-                record.survey_url = False
-    
-    @api.depends('survey_completed', 'session_type')
-    def _compute_next_session(self):
-        for record in self:
-            if record.survey_completed and record.session_type != 'followup6':
-                config = self.env['inclue.survey.config'].search([
-                    ('session_type', '=', record.session_type),
-                    ('active', '=', True)
-                ], limit=1)
-                if config:
-                    record.next_session_date = fields.Date.today() + timedelta(days=config.days_until_next)
-                else:
-                    record.next_session_date = False
-            else:
-                record.next_session_date = False
-    
-    # def send_survey(self):
-    #     """Send survey email to participant"""
-    #     self.ensure_one()
-        
-    #     template = self.env.ref('inclue_journey_v2.email_template_survey_invitation')
-        
-    #     try:
-    #         template.send_mail(self.id, force_send=True)
-    #         self.write({
-    #             'survey_sent': True,
-    #             'date_sent': fields.Datetime.now()
-    #         })
-    #         return True
-    #     except Exception as e:
-    #         _logger.error(f"Failed to send survey to {self.email}: {str(e)}")
-    #         return False
-
-    # def send_survey(self):
-    #     """Send survey email to participant"""
-    #     self.ensure_one()
-        
-    #     # Try to find existing template
-    #     template = self.env.ref('inclue_journey_v2.email_template_survey_invitation', raise_if_not_found=False)
-        
-    #     # If not found, create a temporary template
-    #     if not template:
-    #         template = self.env['mail.template'].create({
-    #             'name': 'iN-Clue Survey Invitation',
-    #             'model_id': self.env['ir.model'].search([('model', '=', 'inclue.participant')], limit=1).id,
-    #             'subject': 'Your iN-Clue Journey Survey is Ready',
-    #             'email_from': 'noreply@inclue.com',
-    #             'email_to': '${object.email}',
-    #             'body_html': '''
-    #                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    #                     <div style="background-color: #008f8c; color: white; padding: 20px; text-align: center;">
-    #                         <h1 style="margin: 0;">iN-Clue Journey</h1>
-    #                     </div>
-                        
-    #                     <div style="padding: 20px; background-color: #f9f9f9;">
-    #                         <p>Dear ${object.name},</p>
-                            
-    #                         <p>Thank you for participating in the <strong>${object.session_type}</strong> session of the iN-Clue Journey.</p>
-                            
-    #                         <p>Please take a moment to complete your survey by clicking the button below:</p>
-                            
-    #                         <div style="text-align: center; margin: 30px 0;">
-    #                             <a href="${object.survey_url}" 
-    #                             style="background-color: #008f8c; 
-    #                                     color: white; 
-    #                                     padding: 12px 30px; 
-    #                                     text-decoration: none; 
-    #                                     border-radius: 5px; 
-    #                                     display: inline-block;
-    #                                     font-weight: bold;">
-    #                                 Complete Survey
-    #                             </a>
-    #                         </div>
-                            
-    #                         <p><strong>Session Details:</strong></p>
-    #                         <ul style="list-style: none; padding-left: 0;">
-    #                             <li>📅 Event: ${object.event_id.name}</li>
-    #                             <li>👤 Facilitator: ${object.facilitator_id.name}</li>
-    #                             <li>👥 Team Lead: ${object.team_lead_name}</li>
-    #                             <li>🏢 Company: ${object.company_name}</li>
-    #                         </ul>
-                            
-    #                         <p>This survey link is unique to you and requires no login.</p>
-                            
-    #                         <p>Thank you for your participation!</p>
-                            
-    #                         <p>Best regards,<br/>The iN-Clue Team</p>
-    #                     </div>
-                        
-    #                     <div style="background-color: #333; color: white; padding: 10px; text-align: center; font-size: 12px;">
-    #                         <p style="margin: 0;">© 2024 iN-Clue Journey. All rights reserved.</p>
-    #                     </div>
-    #                 </div>
-    #             ''',
-    #         })
-    #         # Save the template ID for future use
-    #         self.env['ir.model.data'].create({
-    #             'name': 'email_template_survey_invitation',
-    #             'module': 'inclue_journey_v2',
-    #             'model': 'mail.template',
-    #             'res_id': template.id,
-    #         })
-        
-    #     # Continue with sending the email
-    #     try:
-    #         template.send_mail(self.id, force_send=True)
-    #         self.write({
-    #             'survey_sent': True,
-    #             'date_sent': fields.Datetime.now()
-    #         })
-    #         return True
-    #     except Exception as e:
-    #         _logger.error(f"Failed to send survey to {self.email}: {str(e)}")
-    #         return False
+                rec.survey_url = False
+  
     def send_survey(self):
         """Send survey email to participant"""
         self.ensure_one()
         
-        # Create a dynamic template with QWeb syntax
         template = self.env['mail.template'].create({
             'name': 'iN-Clue Survey Invitation',
             'model_id': self.env['ir.model'].search([('model', '=', 'inclue.participant')], limit=1).id,
@@ -244,61 +170,45 @@ class InclueParticipant(models.Model):
             'auto_delete': False,
         })
         
-        # Send the email
         try:
             mail_id = template.send_mail(self.id, force_send=True)
-            self.write({
-                'survey_sent': True,
-                'date_sent': fields.Datetime.now()
-            })
-            # Delete the temporary template after sending
             template.unlink()
             return True
         except Exception as e:
             _logger.error(f"Failed to send survey to {self.email}: {str(e)}")
             return False
+
     @api.model
-    def cron_create_followup_sessions(self):
-        """Cron job to create follow-up sessions"""
-        today = fields.Date.today()
-        
-        # Find participants due for follow-up
-        participants = self.search([
+    def get_participant_by_email(self, email):
+        """Get the appropriate participant record for an email"""
+        latest_completed = self.search([
+            ('email', '=', email),
             ('survey_completed', '=', True),
-            ('next_session_date', '<=', today),
-            ('session_type', '!=', 'followup6')
-        ])
+            ('is_latest', '=', True)
+        ], limit=1)
         
-        for participant in participants:
-            next_session = self._get_next_session_type(participant.session_type)
+        _logger.info(f"Latest completed participant for {email}: {latest_completed.id if latest_completed else 'None'}")
+        if latest_completed:
+            next_session = self._get_next_session_type(latest_completed.session_type)
             if next_session:
-                # Create follow-up event
-                event_vals = {
-                    'name': f"{next_session} - {participant.name}",
-                    'is_inclue_event': True,
-                    'session_type': next_session,
-                    'facilitator_id': participant.facilitator_id.id,
-                    'date_begin': fields.Datetime.now(),
-                    'date_end': fields.Datetime.now() + timedelta(hours=1),
-                }
+                next_participant = self.search([
+                    ('email', '=', email),
+                    ('session_type', '=', next_session)
+                ], limit=1)
                 
-                follow_up_event = self.env['event.event'].create(event_vals)
-                
-                # Create follow-up participant
-                participant_vals = {
-                    'name': participant.name,
-                    'email': participant.email,
-                    'team_lead_name': participant.team_lead_name,
-                    'company_name': participant.company_name,
-                    'event_id': follow_up_event.id,
-                    'previous_participant_id': participant.id,
-                }
-                
-                follow_up = self.create(participant_vals)
-                follow_up.send_survey()
-                
-                # Clear next session date
-                participant.next_session_date = False
+                if next_participant:
+                    return next_participant
+                else:
+                    return self._create_next_session_participant(latest_completed, next_session)
+        
+        existing_participant = self.search([
+            ('email', '=', email),
+            ('is_latest', '=', True)
+        ], limit=1)
+        
+        if existing_participant:
+            return existing_participant
+        return None
     
     def _get_next_session_type(self, current_session):
         """Get the next session type in sequence"""
@@ -312,42 +222,31 @@ class InclueParticipant(models.Model):
             pass
         return None
     
-
-    def advance_to_next_session(self):
-        """Creates a new participant record for the next session if available."""
-        session_order = ['kickoff', 'followup1', 'followup2', 'followup3', 'followup4', 'followup5', 'followup6']
-        
-        if self.session_type not in session_order:
-            raise ValueError("Unknown session type.")
-        
-        current_index = session_order.index(self.session_type)
-        if current_index + 1 >= len(session_order):
-            raise ValueError("Already at the last session.")
-
-        next_session_type = session_order[current_index + 1]
-
-        next_event = self.env['event.event'].sudo().search([
-            ('facilitator_id', '=', self.facilitator_id.id),
+    def _create_next_session_participant(self, previous_participant, next_session_type):
+        """Create NEW participant for next session (don't override existing)"""
+        # Find next session event
+        next_event = self.env['event.event'].search([
+            ('facilitator_id', '=', previous_participant.facilitator_id.id),
             ('session_type', '=', next_session_type)
         ], limit=1)
-
+        
         if not next_event:
-            raise ValueError(f"No event found for session type '{next_session_type}'.")
-
-        # Mark current as not latest
-        self.is_latest = False
-
-        new_participant = self.copy({
+            _logger.warning(f"No event found for session type '{next_session_type}'")
+            return None
+        
+        previous_participant.sudo().write({'is_latest': False})
+        
+        new_participant = self.create({
+            'name': previous_participant.name,
+            'email': previous_participant.email,
+            'team_lead_name': previous_participant.team_lead_name,
+            'company_name': previous_participant.company_name,
             'event_id': next_event.id,
-            'previous_participant_id': self.id,
-            'is_latest': True,
-            'survey_sent': False,
-            'survey_started': False,
-            'survey_completed': False,
-            'date_sent': False,
-            'date_started': False,
-            'date_completed': False,
-            'user_input_id': False
+            'previous_participant_id': previous_participant.id,
+            'is_latest': True
         })
-
+        
+        _logger.info(f"Created new participant {new_participant.id} for {next_session_type} "
+                    f"(previous: {previous_participant.id})")
+        
         return new_participant

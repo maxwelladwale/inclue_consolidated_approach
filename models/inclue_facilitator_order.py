@@ -93,6 +93,12 @@ class FacilitatorOrder(models.Model):
         string='PO Number', 
         tracking=True
     )
+
+    is_latest = fields.Boolean(
+        string='Is Latest Order',
+        default=True,
+        tracking=True
+    )
     
     # Calculated fields
     total_price = fields.Float(
