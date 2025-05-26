@@ -7,11 +7,11 @@
               web_icon="inclue_journey_v2,static/description/icon.png"/>
     
     <!-- Sub Menus -->
-    <menuitem id="menu_inclue_participants"
+    <!-- <menuitem id="menu_inclue_participants"
               name="Participants"
               parent="menu_inclue_root"
               action="action_inclue_participant"
-              sequence="10"/>
+              sequence="10"/> -->
     
     <menuitem id="menu_inclue_config"
               name="Configuration"
