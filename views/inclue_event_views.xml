@@ -10,6 +10,11 @@
                 <field name="is_inclue_event"/>
                 <field name="session_type" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
                 <field name="facilitator_id" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
+                <field name="division_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
+                <field name="language_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
+                <field name="country_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
+                <!-- <field name="region"/> -->
+                <!-- <field name="hr_contact_id"/> -->
             </xpath>
             
             <!-- Add Send Surveys button -->
@@ -27,6 +32,18 @@
                     <group>
                         <field name="survey_id" readonly="1"/>
                     </group>
+                    <group string="Invoice Information" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
+                        <field name="invoice_info_id" context="{'default_event_id': id}" options="{'no_create_edit': False}"/>
+                    </group>
+
+                    <!-- <group string="Invoice Details">
+                        <field name="invoice_company_id"/>
+                        <field name="invoice_address"/>
+                        <field name="invoice_contact_person"/>
+                        <field name="invoice_po_number"/>
+                        <field name="invoice_email"/>
+                    </group> -->
+
                     <field name="participant_ids" context="{'default_event_id': id}">
                         <tree editable="bottom">
                             <field name="name"/>

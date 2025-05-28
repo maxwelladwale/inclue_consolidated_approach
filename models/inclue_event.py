@@ -1,4 +1,3 @@
-# models/inclue_event.py
 from odoo import models, fields, api
 import logging
 
@@ -37,6 +36,15 @@ class InclueEvent(models.Model):
         'event_id',
         string='Participants'
     )
+    division_id = fields.Many2one('hr.department', string="Division")
+    country_id = fields.Many2one('res.country', string="Country")
+    language_id = fields.Many2one('res.lang', string="Preferred Language")
+    hr_contact_id = fields.Many2one('res.partner', string="Responsible HR")
+    invoice_info_id = fields.Many2one('inclue.invoice.info', string="Invoice Info")
+    team_commitment = fields.Text("Team Commitment", help="Commitment from the team to participate in the iN-Clue Journey", required=True)
+    desired_differences = fields.Text("Desired Differences", help="What changes the team wants to see after the iN-Clue Journey", required=True)
+    company_support = fields.Text("Company Support", help="How the company can support the team during the iN-Clue Journey", required=True)
+
     
     @api.depends('session_type', 'is_inclue_event')
     def _compute_survey_id(self):

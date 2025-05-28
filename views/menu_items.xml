@@ -12,6 +12,12 @@
               parent="menu_inclue_root"
               action="action_inclue_participant"
               sequence="10"/> -->
+
+     <menuitem id="menu_inclue_invoice_info"
+              name="Invoice Info"
+              parent="menu_inclue_root"
+              action="action_inclue_invoice_info"
+              sequence="50"/>
     
     <menuitem id="menu_inclue_config"
               name="Configuration"
