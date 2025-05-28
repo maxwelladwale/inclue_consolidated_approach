@@ -1,0 +1,11 @@
+<odoo>
+    <!-- Action -->
+    <record id="action_inclue_invoice_info" model="ir.actions.act_window">
+        <field name="name">Invoice Info</field>
+        <field name="res_model">inclue.invoice.info</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p>Create and manage invoice contact information for iN-Clue events.</p>
+        </field>
+    </record>
+</odoo>
