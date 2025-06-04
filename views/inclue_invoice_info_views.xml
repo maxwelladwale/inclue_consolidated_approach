@@ -1,11 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Action -->
+    <!-- Form View for Invoice Info -->
+    <record id="view_inclue_invoice_info_form" model="ir.ui.view">
+        <field name="name">inclue.invoice.info.form</field>
+        <field name="model">inclue.invoice.info</field>
+        <field name="arch" type="xml">
+            <form string="Invoice Information">
+                <header>
+                    <button name="action_create_partner"
+                            type="object"
+                            string="Create/Link Partner"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('partner_id', '!=', False)]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_events"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-calendar">
+                            <field name="event_count" widget="statinfo" string="Events"/>
+                        </button>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="company_name"/>
+                            <field name="contact_person"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                        </group>
+                        <group>
+                            <field name="po_number"/>
+                            <field name="tax_id"/>
+                            <field name="payment_terms"/>
+                            <field name="currency_id"/>
+                            <field name="partner_id" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Billing Address">
+                        <field name="address" nolabel="1"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Related Events">
+                            <field name="event_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date_begin"/>
+                                    <field name="session_type"/>
+                                    <field name="facilitator_id"/>
+                                    <field name="invoice_created"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Tree View for Invoice Info -->
+    <record id="view_inclue_invoice_info_tree" model="ir.ui.view">
+        <field name="name">inclue.invoice.info.tree</field>
+        <field name="model">inclue.invoice.info</field>
+        <field name="arch" type="xml">
+            <tree string="Invoice Information">
+                <field name="company_name"/>
+                <field name="contact_person"/>
+                <field name="email"/>
+                <field name="po_number"/>
+                <field name="event_count"/>
+                <field name="partner_id"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Search View for Invoice Info -->
+    <record id="view_inclue_invoice_info_search" model="ir.ui.view">
+        <field name="name">inclue.invoice.info.search</field>
+        <field name="model">inclue.invoice.info</field>
+        <field name="arch" type="xml">
+            <search string="Invoice Information">
+                <field name="company_name"/>
+                <field name="contact_person"/>
+                <field name="email"/>
+                <field name="po_number"/>
+                
+                <filter string="Has Partner" name="has_partner" domain="[('partner_id', '!=', False)]"/>
+                <filter string="No Partner" name="no_partner" domain="[('partner_id', '=', False)]"/>
+                <filter string="Has Events" name="has_events" domain="[('event_ids', '!=', False)]"/>
+                
+                <separator/>
+                <filter string="Company" name="group_company" context="{'group_by': 'company_name'}"/>
+                <filter string="Currency" name="group_currency" context="{'group_by': 'currency_id'}"/>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Action for Invoice Info -->
     <record id="action_inclue_invoice_info" model="ir.actions.act_window">
-        <field name="name">Invoice Info</field>
+        <field name="name">Invoice Information</field>
         <field name="res_model">inclue.invoice.info</field>
         <field name="view_mode">tree,form</field>
         <field name="help" type="html">
-            <p>Create and manage invoice contact information for iN-Clue events.</p>
+            <p class="o_view_nocontent_smiling_face">
+                Create invoice information records for iN-Clue events
+            </p>
+            <p>
+                Invoice information helps manage billing details for different companies
+                participating in iN-Clue events.
+            </p>
         </field>
     </record>
+    
+    <!-- Menu item (optional) -->
+    <menuitem id="menu_inclue_invoice_info"
+              name="Invoice Information"
+              parent="event.event_main_menu"
+              action="action_inclue_invoice_info"
+              sequence="20"/>
 </odoo>
