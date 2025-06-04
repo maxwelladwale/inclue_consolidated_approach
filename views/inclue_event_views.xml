@@ -13,36 +13,45 @@
                 <field name="division_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
                 <field name="language_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
                 <field name="country_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
-                <!-- <field name="region"/> -->
-                <!-- <field name="hr_contact_id"/> -->
+                <!-- Invoice status fields -->
+                <field name="invoice_created" invisible="1"/>
+                <field name="invoice_id" invisible="1"/>
             </xpath>
             
-            <!-- Add Send Surveys button -->
+            <!-- Add Invoice and Survey buttons -->
             <xpath expr="//header" position="inside">
                 <button name="action_send_surveys"
                         type="object"
                         string="Send Surveys"
                         class="oe_highlight"
                         attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
+                <button name="action_view_invoice"
+                        type="object"
+                        string="View Invoice"
+                        class="oe_highlight"
+                        attrs="{'invisible': ['|', ('is_inclue_event', '=', False), ('invoice_created', '=', False)]}"/>
+                <button name="action_create_invoice_manual"
+                        type="object"
+                        string="Create Invoice"
+                        attrs="{'invisible': ['|', ('is_inclue_event', '=', False), ('invoice_created', '=', True)]}"/>
             </xpath>
             
             <!-- Add iN-Clue tab -->
             <xpath expr="//notebook" position="inside">
                 <page string="iN-Clue Journey" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
                     <group>
-                        <field name="survey_id" readonly="1"/>
+                        <group>
+                            <field name="survey_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="invoice_created" readonly="1"/>
+                            <field name="invoice_id" readonly="1" attrs="{'invisible': [('invoice_created', '=', False)]}"/>
+                        </group>
                     </group>
+                    
                     <group string="Invoice Information" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
                         <field name="invoice_info_id" context="{'default_event_id': id}" options="{'no_create_edit': False}"/>
                     </group>
-
-                    <!-- <group string="Invoice Details">
-                        <field name="invoice_company_id"/>
-                        <field name="invoice_address"/>
-                        <field name="invoice_contact_person"/>
-                        <field name="invoice_po_number"/>
-                        <field name="invoice_email"/>
-                    </group> -->
 
                     <field name="participant_ids" context="{'default_event_id': id}">
                         <tree editable="bottom">
@@ -64,7 +73,7 @@
         </field>
     </record>
     
-    <!-- Tree View with iN-Clue info -->
+    <!-- Tree View with iN-Clue and invoice info -->
     <record id="view_event_tree_inclue_inherit" model="ir.ui.view">
         <field name="name">event.event.tree.inclue</field>
         <field name="model">event.event</field>
@@ -74,6 +83,7 @@
                 <field name="is_inclue_event" optional="show"/>
                 <field name="session_type" optional="show"/>
                 <field name="facilitator_id" optional="show"/>
+                <field name="invoice_created" optional="show"/>
             </xpath>
         </field>
     </record>
@@ -86,9 +96,12 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <filter string="iN-Clue Events" name="inclue_events" domain="[('is_inclue_event', '=', True)]"/>
+                <filter string="Invoice Created" name="invoice_created" domain="[('invoice_created', '=', True)]"/>
+                <filter string="Invoice Pending" name="invoice_pending" domain="[('is_inclue_event', '=', True), ('invoice_created', '=', False)]"/>
                 <separator/>
                 <filter string="Session Type" name="group_session_type" context="{'group_by': 'session_type'}"/>
                 <filter string="Facilitator" name="group_facilitator" context="{'group_by': 'facilitator_id'}"/>
+                <filter string="Invoice Status" name="group_invoice_status" context="{'group_by': 'invoice_created'}"/>
             </xpath>
         </field>
     </record>
