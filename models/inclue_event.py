@@ -17,7 +17,7 @@ class InclueEvent(models.Model):
         ('followup6', 'Follow-up Session 6'),
     ], string='Session Type', default='kickoff')
     
-    contactPerson = fields.Char(
+    contact_person = fields.Char(
         string='Contact Person',
         help="Name of the contact person for the iN-Clue event",
         required=True
@@ -52,9 +52,9 @@ class InclueEvent(models.Model):
     language_id = fields.Many2one('res.lang', string="Preferred Language")
     hr_contact_id = fields.Many2one('res.partner', string="Responsible HR")
     invoice_info_id = fields.Many2one('inclue.invoice.info', string="Invoice Info")
-    team_commitment = fields.Text("Team Commitment", help="Commitment from the team to participate in the iN-Clue Journey", required=True)
-    desired_differences = fields.Text("Desired Differences", help="What changes the team wants to see after the iN-Clue Journey", required=True)
-    company_support = fields.Text("Company Support", help="How the company can support the team during the iN-Clue Journey", required=True)
+    team_commitment = fields.Text("Team Commitment", help="Commitment from the team to participate in the iN-Clue Journey")
+    desired_differences = fields.Text("Desired Differences", help="What changes the team wants to see after the iN-Clue Journey")
+    company_support = fields.Text("Company Support", help="How the company can support the team during the iN-Clue Journey")
     
     # New fields for invoice tracking
     invoice_id = fields.Many2one('account.move', string='Generated Invoice', readonly=True)
