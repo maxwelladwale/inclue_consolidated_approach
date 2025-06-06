@@ -5,20 +5,23 @@
         <field name="model">event.event</field>
         <field name="inherit_id" ref="event.view_event_form"/>
         <field name="arch" type="xml">
-            <!-- Add iN-Clue fields -->
+
             <xpath expr="//field[@name='organizer_id']" position="after">
                 <field name="is_inclue_event"/>
                 <field name="session_type" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
                 <field name="facilitator_id" attrs="{'invisible': [('is_inclue_event', '=', False)], 'required': [('is_inclue_event', '=', True)]}"/>
+
+                <field name="cohort" attrs="{'invisible': [('is_inclue_event', '=', False)]}" readonly="1"/>
+                <field name="parent_kickoff_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}" readonly="1"/>
                 <field name="division_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
                 <field name="language_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
                 <field name="country_id" attrs="{'invisible': [('is_inclue_event', '=', False)]}"/>
-                <!-- Invoice status fields -->
+
                 <field name="invoice_created" invisible="1"/>
                 <field name="invoice_id" invisible="1"/>
             </xpath>
             
-            <!-- Add Invoice and Survey buttons -->
+
             <xpath expr="//header" position="inside">
                 <button name="action_send_surveys"
                         type="object"
@@ -34,14 +37,21 @@
                         type="object"
                         string="Create Invoice"
                         attrs="{'invisible': ['|', ('is_inclue_event', '=', False), ('invoice_created', '=', True)]}"/>
+                <button name="action_view_journey_sessions"
+                        type="object"
+                        string="View Journey Sessions"
+                        attrs="{'invisible': ['|', ('is_inclue_event', '=', False), ('session_type', '!=', 'kickoff')]}"/>
             </xpath>
             
-            <!-- Add iN-Clue tab -->
+
             <xpath expr="//notebook" position="inside">
                 <page string="iN-Clue Journey" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
                     <group>
                         <group>
                             <field name="survey_id" readonly="1"/>
+
+                            <field name="cohort" readonly="1"/>
+                            <field name="parent_kickoff_id" readonly="1" attrs="{'invisible': [('parent_kickoff_id', '=', False)]}"/>
                         </group>
                         <group>
                             <field name="invoice_created" readonly="1"/>
@@ -49,31 +59,39 @@
                         </group>
                     </group>
                     
-                    <group string="Invoice Information" attrs="{'invisible': [('is_inclue_event', '=', False)]}">
+
+                    <group string="Event Details">
+                        <field name="contact_person"/>
+                    </group>
+                    
+                    <group string="Invoice Information">
                         <field name="invoice_info_id" context="{'default_event_id': id}" options="{'no_create_edit': False}"/>
                     </group>
 
-                    <field name="participant_ids" context="{'default_event_id': id}">
-                        <tree editable="bottom">
-                            <field name="name"/>
-                            <field name="email"/>
-                            <field name="team_lead_name"/>
-                            <field name="company_name"/>
-                            <field name="survey_sent"/>
-                            <field name="survey_completed"/>
-                            <button name="send_survey" 
-                                    type="object" 
-                                    string="Send Survey" 
-                                    attrs="{'invisible': [('survey_sent', '=', True)]}"
-                                    icon="fa-envelope"/>
-                        </tree>
-                    </field>
+                    <group string="Participants">
+                        <field name="participant_ids" context="{'default_event_id': id}">
+                            <tree editable="bottom">
+                                <field name="name"/>
+                                <field name="email"/>
+                                <field name="team_lead_name"/>
+                                <field name="company_name"/>
+                                <field name="cohort" readonly="1"/>
+                                <field name="survey_sent"/>
+                                <field name="survey_completed"/>
+                                <field name="is_latest"/>
+                                <button name="send_survey" 
+                                        type="object" 
+                                        string="Send Survey" 
+                                        attrs="{'invisible': [('survey_sent', '=', True)]}"
+                                        icon="fa-envelope"/>
+                            </tree>
+                        </field>
+                    </group>
                 </page>
             </xpath>
         </field>
     </record>
     
-    <!-- Tree View with iN-Clue and invoice info -->
     <record id="view_event_tree_inclue_inherit" model="ir.ui.view">
         <field name="name">event.event.tree.inclue</field>
         <field name="model">event.event</field>
@@ -82,6 +100,7 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="is_inclue_event" optional="show"/>
                 <field name="session_type" optional="show"/>
+                <field name="cohort" optional="show"/>
                 <field name="facilitator_id" optional="show"/>
                 <field name="invoice_created" optional="show"/>
             </xpath>
@@ -100,6 +119,7 @@
                 <filter string="Invoice Pending" name="invoice_pending" domain="[('is_inclue_event', '=', True), ('invoice_created', '=', False)]"/>
                 <separator/>
                 <filter string="Session Type" name="group_session_type" context="{'group_by': 'session_type'}"/>
+                <filter string="Cohort" name="group_cohort" context="{'group_by': 'cohort'}"/>
                 <filter string="Facilitator" name="group_facilitator" context="{'group_by': 'facilitator_id'}"/>
                 <filter string="Invoice Status" name="group_invoice_status" context="{'group_by': 'invoice_created'}"/>
             </xpath>

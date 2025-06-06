@@ -1,4 +1,6 @@
 from odoo import models, fields, api
+from datetime import datetime, timedelta
+
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -7,6 +9,18 @@ class InclueEvent(models.Model):
     _inherit = 'event.event'
     
     is_inclue_event = fields.Boolean('iN-Clue Event', default=False)
+
+    cohort = fields.Char(
+        string='Cohort ID',
+        help="Unique identifier for this cohort (e.g., 'CompanyA_CohortA')",
+        index=True
+    )
+    
+    parent_kickoff_id = fields.Many2one(
+        'event.event',
+        string='Parent Kickoff',
+        help="The kickoff event that this follow-up belongs to"
+    )
     session_type = fields.Selection([
         ('kickoff', 'KickOff Session'),
         ('followup1', 'Follow-up Session 1'),
@@ -64,6 +78,9 @@ class InclueEvent(models.Model):
     def create(self, vals):
         """Override create to automatically generate invoice for iN-Clue events"""
         event = super(InclueEvent, self).create(vals)
+
+        if event.is_inclue_event and event.session_type == 'kickoff' and not event.cohort:
+            event.cohort = event._generate_cohort_id()
         
         # Create invoice if this is an iN-Clue event
         if event.is_inclue_event:
@@ -74,6 +91,81 @@ class InclueEvent(models.Model):
                 _logger.error("Failed to create invoice for event ID %s: %s", event.id, str(e))
         
         return event
+    
+    def _generate_cohort_id(self):
+        """Generate unique cohort ID like 'CompanyA_CohortA'"""
+        self.ensure_one()
+        
+        # Base name from company or facilitator
+        base_name = "Unknown"
+        if self.invoice_info_id and self.invoice_info_id.company_name:
+            base_name = self.invoice_info_id.company_name.replace(' ', '')[:10]
+        elif self.facilitator_id:
+            base_name = self.facilitator_id.name.replace(' ', '')[:10]
+        
+        # Find existing cohorts for this facilitator to determine suffix
+        existing_cohorts = self.env['event.event'].search([
+            ('facilitator_id', '=', self.facilitator_id.id),
+            ('session_type', '=', 'kickoff'),
+            ('is_inclue_event', '=', True),
+            ('cohort', '!=', False),
+            ('id', '!=', self.id)
+        ])
+        
+        # Generate suffix (A, B, C, etc.)
+        suffix_num = len(existing_cohorts)
+        suffix = chr(65 + suffix_num)  # A=65, B=66, etc.
+        
+        return f"{base_name}_Cohort{suffix}"
+
+
+    def create_followup_sessions(self, followup_dates):
+        """Create all follow-up sessions for this kickoff cohort"""
+        self.ensure_one()
+        
+        if self.session_type != 'kickoff':
+            raise ValueError("Can only create follow-ups from kickoff sessions")
+        
+        session_types = ['followup1', 'followup2', 'followup3', 'followup4', 'followup5', 'followup6']
+        created_sessions = []
+        
+        for session_type in session_types:
+            if session_type not in followup_dates:
+                continue
+                
+            date_begin = followup_dates[session_type]
+            if isinstance(date_begin, str):
+                try:
+                    date_begin = datetime.strptime(date_begin, "%Y-%m-%dT%H:%M:%S")
+                except ValueError:
+                    date_begin = fields.Datetime.from_string(date_begin)
+            
+            # Copy all relevant fields from kickoff
+            followup_vals = {
+                'name': f"{self.name} - {session_type.title()}",
+                'session_type': session_type,
+                'is_inclue_event': True,
+                'facilitator_id': self.facilitator_id.id,
+                'company_id': self.company_id.id,
+                'date_begin': date_begin,
+                'date_end': date_begin,
+                'cohort': self.cohort,  # SAME COHORT!
+                'parent_kickoff_id': self.id,  # Link to parent
+                'contact_person': self.contact_person,
+                'division_id': self.division_id.id if self.division_id else False,
+                'country_id': self.country_id.id if self.country_id else False,
+                'language_id': self.language_id.id if self.language_id else False,
+                'invoice_info_id': self.invoice_info_id.id if self.invoice_info_id else False,
+                'team_commitment': self.team_commitment,
+                'desired_differences': self.desired_differences,
+                'company_support': self.company_support,
+            }
+            
+            followup_session = self.env['event.event'].create(followup_vals)
+            created_sessions.append(followup_session)
+            _logger.info("Created follow-up session %s for cohort %s", session_type, self.cohort)
+        
+        return created_sessions
 
     def write(self, vals):
         """Override write to create invoice if is_inclue_event is set to True"""

@@ -43,6 +43,13 @@ class InclueParticipant(models.Model):
     
     previous_participant_id = fields.Many2one('inclue.participant', string='Previous Participation')
     user_input_id = fields.Many2one('survey.user_input', string='Survey Response', readonly=True)
+
+    cohort = fields.Char(
+        related='event_id.cohort',
+        store=True,
+        string='Cohort',
+        help="Cohort this participant belongs to"
+    )
     
     def _ensure_survey_assignment(self):
         """Ensure participant has proper survey and user_input setup"""
@@ -223,19 +230,21 @@ class InclueParticipant(models.Model):
         return None
     
     def _create_next_session_participant(self, previous_participant, next_session_type):
-        """Create NEW participant for next session (don't override existing)"""
-        # Find next session event
+        """Create NEW participant for next session IN SAME COHORT"""
+        # Find next session event IN THE SAME COHORT (this is the key change!)
         next_event = self.env['event.event'].search([
-            ('facilitator_id', '=', previous_participant.facilitator_id.id),
-            ('session_type', '=', next_session_type)
+            ('session_type', '=', next_session_type),
+            ('cohort', '=', previous_participant.cohort),  # SAME COHORT!
+            ('facilitator_id', '=', previous_participant.facilitator_id.id)
         ], limit=1)
         
         if not next_event:
-            _logger.warning(f"No event found for session type '{next_session_type}'")
+            _logger.warning(f"No event found for session type '{next_session_type}' in cohort '{previous_participant.cohort}'")
             return None
         
         previous_participant.sudo().write({'is_latest': False})
         
+        # Your existing participant creation logic stays exactly the same
         new_participant = self.create({
             'name': previous_participant.name,
             'email': previous_participant.email,
@@ -247,6 +256,7 @@ class InclueParticipant(models.Model):
         })
         
         _logger.info(f"Created new participant {new_participant.id} for {next_session_type} "
-                    f"(previous: {previous_participant.id})")
+                    f"in cohort {previous_participant.cohort} (previous: {previous_participant.id})")
         
         return new_participant
+
