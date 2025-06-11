@@ -21,6 +21,7 @@
         'data/cron_jobs.xml',
         # 'views/inclue_event_views.xml',
         # 'views/inclue_participant_views.xml',
+        # 'views/completion_survey_config.xml',
         'views/inclue_survey_config_views.xml',
         'views/res_partner_views.xml',
         'views/inclue_facilitator_order_views.xml',

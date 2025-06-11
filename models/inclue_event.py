@@ -16,6 +16,40 @@ class InclueEvent(models.Model):
         index=True
     )
     
+    # Journey Completion Fields
+    completion_survey_triggered = fields.Boolean(
+        'Completion Survey Triggered', 
+        default=False, 
+        help="Whether the completion survey has been triggered for this journey"
+    )
+    
+    journey_completed = fields.Boolean(
+        'Journey Completed', 
+        default=False,
+        help="Whether this journey has been officially completed"
+    )
+    
+    completion_date = fields.Datetime(
+        'Completion Date',
+        help="Date when the journey was officially completed"
+    )
+    
+    completion_trigger_date = fields.Datetime(
+        'Completion Trigger Date',
+        help="Date when the completion process was triggered"
+    )
+    
+    completion_user_input_id = fields.Many2one(
+        'survey.user_input',
+        'Completion Survey Response',
+        help="The survey response for the completion survey"
+    )
+    
+    completion_survey_url = fields.Char(
+        'Completion Survey URL',
+        help="URL for the completion survey"
+    )
+
     parent_kickoff_id = fields.Many2one(
         'event.event',
         string='Parent Kickoff',
@@ -436,6 +470,102 @@ class InclueEvent(models.Model):
                 'params': {
                     'title': 'Error',
                     'message': f'Failed to create invoice: {str(e)}',
+                    'type': 'danger',
+                }
+            }
+        
+    def action_trigger_completion(self):
+        """
+        Manual action to trigger completion survey from Odoo interface
+        """
+        self.ensure_one()
+        
+        if self.session_type != 'kickoff':
+            raise ValueError("Completion can only be triggered from kickoff events")
+            
+        if self.completion_survey_triggered:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Already Triggered',
+                    'message': 'Completion survey has already been triggered for this journey.',
+                    'type': 'warning',
+                }
+            }
+        
+        try:
+            # Get completion survey configuration
+            completion_survey_config = self.env['inclue.survey.config'].search([
+                ('session_type', '=', 'completion'),
+                ('active', '=', True)
+            ], limit=1)
+
+            if not completion_survey_config:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Configuration Missing',
+                        'message': 'No completion survey configured. Please contact administrator.',
+                        'type': 'danger',
+                    }
+                }
+
+            # Create completion survey user input for facilitator
+            completion_survey = completion_survey_config.survey_id
+            facilitator_user = self.facilitator_id.user_ids[0] if self.facilitator_id.user_ids else None
+            
+            if not facilitator_user:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Error',
+                        'message': 'Facilitator has no user account configured.',
+                        'type': 'danger',
+                    }
+                }
+
+            # Create completion survey user input
+            user_input = self.env['survey.user_input'].create({
+                'survey_id': completion_survey.id,
+                'email': facilitator_user.email,
+                'nickname': facilitator_user.name,
+                'state': 'new',
+                'completion_journey_id': self.id
+            })
+
+            # Generate completion survey URL
+            base_url = self.env['ir.config_parameter'].get_param('web.base.url')
+            # completion_url = f"{base_url}/survey/{completion_survey.access_token}/{user_input.access_token}"
+            completion_url = f"{base_url}/survey/{completion_survey.access_token}/{user_input.access_token}?access_token={user_input.access_token}"
+
+            # Update event with completion info
+            self.write({
+                'completion_survey_triggered': True,
+                'completion_user_input_id': user_input.id,
+                'completion_survey_url': completion_url,
+                'completion_trigger_date': fields.Datetime.now()
+            })
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Completion Survey Created',
+                    'message': f'Completion survey created. URL: {completion_url}',
+                    'type': 'success',
+                }
+            }
+
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error',
+                    'message': f'Failed to create completion survey: {str(e)}',
                     'type': 'danger',
                 }
             }

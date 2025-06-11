@@ -4,3 +4,4 @@ from . import inclue_participant
 from . import res_partner
 from . import inclue_facilitator_order
 from . import inclue_event_invoice_info
+from . import survey_user_input
