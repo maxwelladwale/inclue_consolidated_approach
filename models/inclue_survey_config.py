@@ -16,6 +16,7 @@ class InclueSurveyConfig(models.Model):
         ('followup4', 'Follow-up Session 4'),
         ('followup5', 'Follow-up Session 5'),
         ('followup6', 'Follow-up Session 6'),
+        ('completion', 'Journey Completion Survey'),
     ], string='Session Type', required=True)
     
     survey_id = fields.Many2one('survey.survey', string='Survey Template', required=True)
