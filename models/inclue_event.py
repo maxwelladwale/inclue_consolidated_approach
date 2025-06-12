@@ -15,7 +15,18 @@ class InclueEvent(models.Model):
         help="Unique identifier for this cohort (e.g., 'CompanyA_CohortA')",
         index=True
     )
-    
+
+    # team_leader_id = fields.Many2one(
+    #     'res.partner',
+    #     string='Team Leader',
+    #     help="The team leader associated with this cohort"
+    # )
+
+    team_leader = fields.Char(
+        string='Team Leader',
+        help="The team leader associated with this cohort"
+    )
+
     # Journey Completion Fields
     completion_survey_triggered = fields.Boolean(
         'Completion Survey Triggered', 
