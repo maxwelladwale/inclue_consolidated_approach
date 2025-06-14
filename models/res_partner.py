@@ -17,7 +17,11 @@ class ResPartner(models.Model):
         default=False,
         help="Mark this as an HR/People/Talent related contact"
     )
-    
+    is_team_leader = fields.Boolean(
+        string='Is Team Leader',
+        default=False,
+        help="Mark this as a team leader for filtering purposes"
+    )
     is_finance_contact = fields.Boolean(
         string='Is Finance Contact',
         default=False,
