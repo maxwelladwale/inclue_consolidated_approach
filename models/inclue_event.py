@@ -128,7 +128,7 @@ class InclueEvent(models.Model):
             event.cohort = event._generate_cohort_id()
         
         # Create invoice if this is an iN-Clue event
-        if event.is_inclue_event:
+        if event.is_inclue_event and event.session_type == 'kickoff':
             try:
                 event._create_event_invoice()
                 _logger.info("Invoice created automatically for iN-Clue event ID %s", event.id)
@@ -137,6 +137,55 @@ class InclueEvent(models.Model):
         
         return event
     
+    def _create_event_invoice(self):
+        """Create, post, and send invoice for the iN-Clue event"""
+        self.ensure_one()
+
+        if self.invoice_created:
+            _logger.warning("Invoice already exists for event ID %s", self.id)
+            return
+
+        if not self.facilitator_id:
+            _logger.warning("Cannot create invoice for event ID %s: No facilitator assigned", self.id)
+            return
+
+        invoice_vals = self._prepare_invoice_vals()
+
+        try:
+            invoice = self.env['account.move'].create(invoice_vals)
+
+            invoice_lines = self._prepare_invoice_lines()
+            for line_vals in invoice_lines:
+                line_vals['move_id'] = invoice.id
+                self.env['account.move.line'].create(line_vals)
+
+            # Post the invoice (i.e., confirm it)
+            invoice.action_post()
+
+            # Optionally attach message with invoice email
+            if self.invoice_info_id and self.invoice_info_id.email:
+                invoice.message_post(
+                    body=f"Invoice should be sent to: {self.invoice_info_id.email}",
+                    subject="Invoice Email Information"
+                )
+
+            # Send invoice via email
+            invoice.action_invoice_sent()
+
+            # Update event
+            self.write({
+                'invoice_id': invoice.id,
+                'invoice_created': True
+            })
+
+            _logger.info("Successfully created and sent invoice ID %s for event ID %s", invoice.id, self.id)
+            return invoice
+
+        except Exception as e:
+            _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
+            raise
+
+
     def _generate_cohort_id(self):
         """Generate unique cohort ID like 'CompanyA_CohortA'"""
         self.ensure_one()
@@ -217,13 +266,14 @@ class InclueEvent(models.Model):
         result = super(InclueEvent, self).write(vals)
         
         # If is_inclue_event was just set to True and no invoice exists yet
-        if vals.get('is_inclue_event') and not self.invoice_created:
+        if vals.get('is_inclue_event'):
             for event in self:
-                try:
-                    event._create_event_invoice()
-                    _logger.info("Invoice created for existing event ID %s after marking as iN-Clue", event.id)
-                except Exception as e:
-                    _logger.error("Failed to create invoice for event ID %s: %s", event.id, str(e))
+                if not event.invoice_created and event.session_type == 'kickoff':
+                    try:
+                        event._create_event_invoice()
+                        _logger.info("Invoice created for existing event ID %s after marking as iN-Clue", event.id)
+                    except Exception as e:
+                        _logger.error("Failed to create invoice for event ID %s: %s", event.id, str(e))
         
         return result
     
