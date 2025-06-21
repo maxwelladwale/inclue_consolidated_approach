@@ -73,7 +73,7 @@ class InclueEventInvoiceInfo(models.Model):
                 'is_company': True,
                 'street': self.address,
                 'vat': self.tax_id,
-                'customer_rank': 1,  # Mark as customer
+                # 'customer_rank': 1,  # Mark as customer
             }
             
             try:

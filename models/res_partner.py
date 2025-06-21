@@ -27,7 +27,11 @@ class ResPartner(models.Model):
         default=False,
         help="Mark this as a Finance/Accounting/Billing related contact"
     )
-    
+    customer_rank = fields.Integer(
+        string='Customer Rank',
+        default=0,
+        help="Rank of this partner as a customer"
+    )
     is_facilitator = fields.Boolean('Is Facilitator', default=False)
     facilitated_event_ids = fields.One2many('event.event', 'facilitator_id', string='Facilitated Events')
     facilitation_count = fields.Integer('Facilitation Count', compute='_compute_facilitation_stats')

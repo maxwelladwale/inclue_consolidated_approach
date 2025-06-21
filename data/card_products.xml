@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Product Categories -->
+        <record id="product_category_inclue_cards" model="product.category">
+            <field name="name">iN-Clue Cards</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+        
+        <!-- Gift Card Product -->
+        <record id="product_gift_card" model="product.template">
+            <field name="name">iN-Clue Gift Card</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="is_inclue_card">True</field>
+            <field name="inclue_card_type">gift_card</field>
+            <field name="facilitator_pricing_type">same</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="description">Complimentary gift cards for iN-Clue participants</field>
+        </record>
+        
+        <!-- Follow-up Card Product -->
+        <record id="product_followup_card" model="product.template">
+            <field name="name">iN-Clue Follow-up Card</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="is_inclue_card">True</field>
+            <field name="inclue_card_type">followup_card</field>
+            <field name="facilitator_pricing_type">same</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="description">Complimentary follow-up cards for continued engagement</field>
+        </record>
+        
+        <!-- Participant Deck Product -->
+        <record id="product_participant_deck" model="product.template">
+            <field name="name">iN-Clue Participant Deck</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">25.0</field>  <!-- Default price for external facilitators -->
+            <field name="standard_price">20.0</field>
+            <field name="is_inclue_card">True</field>
+            <field name="inclue_card_type">participant_deck</field>
+            <field name="facilitator_pricing_type">different</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="description">Participant deck cards for iN-Clue sessions</field>
+        </record>
+        
+        <!-- Facilitator Deck Product -->
+        <record id="product_facilitator_deck" model="product.template">
+            <field name="name">iN-Clue Facilitator Deck</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">50.0</field>  <!-- Default price for external facilitators -->
+            <field name="standard_price">40.0</field>
+            <field name="is_inclue_card">True</field>
+            <field name="inclue_card_type">facilitator_deck</field>
+            <field name="facilitator_pricing_type">different</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="description">Facilitator deck cards for running iN-Clue sessions</field>
+        </record>
+        
+    </data>
+</odoo>

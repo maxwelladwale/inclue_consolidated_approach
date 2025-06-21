@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Internal Facilitator Pricelist -->
+        <record id="pricelist_internal_facilitator" model="product.pricelist">
+            <field name="name">Internal Facilitator Pricing</field>
+            <field name="currency_id" ref="base.EUR"/>
+            <field name="company_id" eval="False"/>
+            <field name="active">True</field>
+        </record>
+        
+        <!-- External Facilitator Pricelist -->
+        <record id="pricelist_external_facilitator" model="product.pricelist">
+            <field name="name">External Facilitator Pricing</field>
+            <field name="currency_id" ref="base.EUR"/>
+            <field name="company_id" eval="False"/>
+            <field name="active">True</field>
+        </record>
+        
+        <!-- Internal Facilitator Pricing Rules -->
+        
+        <!-- Participant Deck - Internal Price -->
+        <record id="pricelist_item_participant_deck_internal" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_internal_facilitator"/>
+            <field name="product_tmpl_id" ref="product_participant_deck"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">15.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Facilitator Deck - Internal Price -->
+        <record id="pricelist_item_facilitator_deck_internal" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_internal_facilitator"/>
+            <field name="product_tmpl_id" ref="product_facilitator_deck"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">30.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Gift Cards - Internal Price (Free) -->
+        <record id="pricelist_item_gift_card_internal" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_internal_facilitator"/>
+            <field name="product_tmpl_id" ref="product_gift_card"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">0.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Follow-up Cards - Internal Price (Free) -->
+        <record id="pricelist_item_followup_card_internal" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_internal_facilitator"/>
+            <field name="product_tmpl_id" ref="product_followup_card"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">0.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- External Facilitator Pricing Rules -->
+        
+        <!-- Participant Deck - External Price -->
+        <record id="pricelist_item_participant_deck_external" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_external_facilitator"/>
+            <field name="product_tmpl_id" ref="product_participant_deck"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">25.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Facilitator Deck - External Price -->
+        <record id="pricelist_item_facilitator_deck_external" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_external_facilitator"/>
+            <field name="product_tmpl_id" ref="product_facilitator_deck"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">50.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Gift Cards - External Price (Free) -->
+        <record id="pricelist_item_gift_card_external" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_external_facilitator"/>
+            <field name="product_tmpl_id" ref="product_gift_card"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">0.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+        <!-- Follow-up Cards - External Price (Free) -->
+        <record id="pricelist_item_followup_card_external" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_external_facilitator"/>
+            <field name="product_tmpl_id" ref="product_followup_card"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">0.0</field>
+            <field name="min_quantity">0</field>
+        </record>
+        
+    </data>
+</odoo>
