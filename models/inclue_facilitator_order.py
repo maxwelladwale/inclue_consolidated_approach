@@ -1,5 +1,6 @@
+from datetime import datetime
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -47,6 +48,13 @@ class FacilitatorOrder(models.Model):
         tracking=True
     )
     
+    auto_pay_internal = fields.Boolean(
+        'Auto-Pay Internal Orders',
+        default=False,
+        help="Automatically register payment for internal facilitator orders",
+        tracking=True
+    )
+    
     auto_processed = fields.Boolean(
         'Auto Processed', 
         default=False, 
@@ -65,7 +73,6 @@ class FacilitatorOrder(models.Model):
         readonly=True,
         help="Last error encountered during auto-processing"
     )
-    
     
     # Replace individual quantity fields with order lines
     order_line_ids = fields.One2many(
@@ -151,18 +158,25 @@ class FacilitatorOrder(models.Model):
         # Create the order
         order = super(FacilitatorOrder, self).create(vals)
         _logger.info(f"Order created with ID: {order.id}, Name: {order.name}")
+        _logger.info(f"Order lines count: {len(order.order_line_ids)}")
+        for line in order.order_line_ids:
+            _logger.info(f"Order line: {line.product_id.name} x {line.quantity}")
         
-        # Auto-process if enabled
-        if order.auto_process:
+        # Check if this is being created from API (skip auto-processing if so)
+        skip_auto_processing = self.env.context.get('skip_auto_processing', False)
+        
+        # Auto-process if enabled and not skipped
+        if order.auto_process and not skip_auto_processing:
             _logger.info(f"Auto-processing enabled for order {order.name}")
             order._auto_process_order()
         else:
-            _logger.info(f"Auto-processing disabled for order {order.name}")
+            if skip_auto_processing:
+                _logger.info(f"Auto-processing skipped for API creation: {order.name}")
+            else:
+                _logger.info(f"Auto-processing disabled for order {order.name}")
             order._log_processing_step("Auto-processing disabled - order created in draft state")
         
         return order
-    
-
     
     @api.depends('order_line_ids.quantity', 'order_line_ids.product_id')
     def _compute_legacy_quantities(self):
@@ -199,7 +213,19 @@ class FacilitatorOrder(models.Model):
         else:
             _logger.debug("Using external facilitator pricelist for order %s", self.name)
             return self.env.ref('inclue_journey_v2.pricelist_external_facilitator', raise_if_not_found=False)
-    
+
+    def _get_payment_journal(self):
+        """Get the default payment journal"""
+        # Try to find cash journal first, then bank
+        journal = self.env['account.journal'].search([
+            ('type', 'in', ['cash', 'bank']),
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        
+        if not journal:
+            raise UserError(_("No cash or bank journal found for automatic payment registration."))
+        
+        return journal
 
     def _auto_process_order(self):
         """Complete automated processing with detailed logging"""
@@ -213,7 +239,7 @@ class FacilitatorOrder(models.Model):
             log_entries.append(f"📋 Order: {self.name}")
             log_entries.append(f"👤 Facilitator: {self.facilitator_id.name}")
             log_entries.append(f"🏢 Company: {self.company_id.name}")
-            log_entries.append(f"💰 Total Amount: ${self.total_price:.2f}")
+            log_entries.append(f"💰 Total Amount: {self.total_price:.2f} {self.currency_id.name}")
             log_entries.append(f"🎯 Facilitator Type: {self.facilitator_type}")
             
             # Step 1: Confirm Order
@@ -228,8 +254,12 @@ class FacilitatorOrder(models.Model):
             
             # Step 2: Handle Invoice Creation
             log_entries.append("\n--- STEP 2: INVOICE PROCESSING ---")
-            if self.total_price > 0:
-                log_entries.append(f"💵 Paid order detected (${self.total_price:.2f})")
+            
+            # Check if there are any order lines to invoice
+            invoiceable_lines = self.order_line_ids.filtered(lambda l: l.quantity > 0)
+            
+            if invoiceable_lines:
+                log_entries.append(f"💵 Order with items detected (Total: {self.total_price:.2f} {self.currency_id.name})")
                 log_entries.append("🧾 Creating invoice...")
                 
                 # Create invoice
@@ -238,7 +268,7 @@ class FacilitatorOrder(models.Model):
                 if self.invoice_id:
                     log_entries.append(f"✅ Invoice created: {self.invoice_id.name}")
                     log_entries.append(f"📄 Invoice ID: {self.invoice_id.id}")
-                    log_entries.append(f"💰 Invoice Amount: ${self.invoice_id.amount_total:.2f}")
+                    log_entries.append(f"💰 Invoice Amount: {self.invoice_id.amount_total:.2f} {self.invoice_id.currency_id.name}")
                     
                     # Auto-post invoice
                     if self.invoice_id.state == 'draft':
@@ -258,16 +288,27 @@ class FacilitatorOrder(models.Model):
                         log_entries.append(f"❌ Failed to send invoice email: {str(email_error)}")
                         _logger.warning(f"Failed to send invoice email for order {self.name}: {str(email_error)}")
                     
+                    # Optional: Auto-register payment for internal orders
+                    if self.facilitator_type == 'internal' and hasattr(self, 'auto_pay_internal') and self.auto_pay_internal:
+                        log_entries.append("💳 Auto-registering payment (internal order)...")
+                        if self._register_automatic_payment():
+                            log_entries.append("✅ Payment registered automatically")
+                        else:
+                            log_entries.append("❌ Auto-payment failed")
+                    
+                    # STOP HERE - All orders with items stop at invoiced for payment
+                    log_entries.append("🛑 Stopping at invoiced state - awaiting payment confirmation")
+                    
                 else:
                     log_entries.append("❌ Failed to create invoice")
                     raise ValidationError("Invoice creation failed")
                     
             else:
-                log_entries.append("🆓 Free order detected (no invoice needed)")
+                log_entries.append("🆓 No items to invoice - empty order")
                 log_entries.append("📦 Moving directly to shipped state...")
                 self.write({'state': 'shipped'})
                 log_entries.append("✅ Order marked as shipped")
-                _logger.info(f"Free order {self.name} moved to shipped state")
+                _logger.info(f"Empty order {self.name} moved to shipped state")
             
             # Step 3: Finalization
             log_entries.append("\n--- STEP 3: FINALIZATION ---")
@@ -292,7 +333,7 @@ class FacilitatorOrder(models.Model):
                 <h3>🎉 Order Auto-Processing Complete</h3>
                 <ul>
                     <li><strong>Order:</strong> {self.name}</li>
-                    <li><strong>Amount:</strong> ${self.total_price:.2f}</li>
+                    <li><strong>Amount:</strong> {self.total_price:.2f} {self.currency_id.name}</li>
                     <li><strong>Final State:</strong> {self.state}</li>
                     <li><strong>Duration:</strong> {processing_duration:.2f} seconds</li>
                     {f'<li><strong>Invoice:</strong> {self.invoice_id.name}</li>' if self.invoice_id else ''}
@@ -338,6 +379,44 @@ class FacilitatorOrder(models.Model):
             _logger.error(f"Auto-processing failed for order {self.name}: {error_msg}")
             _logger.error(f"Full processing log: {self.processing_log}")
             
+            return False
+    
+    def _register_automatic_payment(self):
+        """Register automatic payment for the invoice"""
+        self.ensure_one()
+        
+        if not self.invoice_id or self.invoice_id.payment_state == 'paid':
+            return False
+            
+        try:
+            # Create payment record
+            payment_vals = {
+                'payment_type': 'inbound',
+                'partner_type': 'customer',
+                'partner_id': self.invoice_id.partner_id.id,
+                'amount': self.invoice_id.amount_total,
+                'currency_id': self.invoice_id.currency_id.id,
+                'payment_date': fields.Date.context_today(self),
+                'communication': f"Auto-payment for {self.name}",
+                'journal_id': self._get_payment_journal().id,
+                'company_id': self.company_id.id,
+            }
+            
+            payment = self.env['account.payment'].create(payment_vals)
+            payment.action_post()
+            
+            # Reconcile with invoice
+            payment_lines = payment.line_ids.filtered(lambda l: l.account_id.user_type_id.type in ('receivable', 'payable'))
+            invoice_lines = self.invoice_id.line_ids.filtered(lambda l: l.account_id.user_type_id.type in ('receivable', 'payable'))
+            
+            (payment_lines + invoice_lines).reconcile()
+            
+            self._log_processing_step(f"💳 Payment registered: {payment.name}")
+            return True
+            
+        except Exception as e:
+            self._log_processing_step(f"❌ Payment registration failed: {str(e)}")
+            _logger.error(f"Failed to register automatic payment for order {self.name}: {str(e)}")
             return False
     
     def _log_processing_step(self, message):
@@ -387,6 +466,19 @@ class FacilitatorOrder(models.Model):
                 }
             }
     
+    def action_trigger_auto_processing(self):
+        """Trigger auto-processing for API-created orders"""
+        self.ensure_one()
+        
+        _logger.info(f"API triggering auto-processing for order {self.name}")
+        self._log_processing_step("🔄 Auto-processing triggered after order lines creation")
+        
+        if self.auto_process:
+            return self._auto_process_order()
+        else:
+            _logger.info(f"Auto-processing disabled for order {self.name}")
+            return False
+    
     def action_view_processing_log(self):
         """Action to view detailed processing log"""
         self.ensure_one()
@@ -401,33 +493,39 @@ class FacilitatorOrder(models.Model):
             'context': {'default_processing_log': self.processing_log}
         }
 
-    # Override existing action_confirm to add logging
     def action_confirm(self):
         """Enhanced confirmation with logging"""
         for order in self:
             _logger.info(f"Confirming order {order.name}")
             order._log_processing_step(f"📋 Order confirmation started")
-            
-        # Call original method
-        result = super(FacilitatorOrder, self).action_confirm()
-        
-        for order in self:
+            order.write({'state': 'confirmed'})
             order._log_processing_step(f"✅ Order confirmed - State: {order.state}")
             _logger.info(f"Order {order.name} confirmed successfully")
-            
-        return result
+        return True
     
-    # Override existing action_invoice to add logging  
     def action_invoice(self):
         """Enhanced invoicing with logging"""
         for order in self:
             _logger.info(f"Creating invoice for order {order.name}")
             order._log_processing_step(f"🧾 Invoice creation started")
             
-        # Call original method
-        result = super(FacilitatorOrder, self).action_invoice()
-        
-        for order in self:
+            # Check if order has invoiceable lines
+            if not order.order_line_ids.filtered(lambda l: l.unit_price > 0):
+                order._log_processing_step(f"⚠️ No invoiceable lines found")
+                continue
+            
+            # Prepare invoice values
+            invoice_vals = order._prepare_invoice_values()
+            invoice_vals['invoice_line_ids'] = order._prepare_invoice_lines()
+            
+            # Create the invoice
+            invoice = self.env['account.move'].create(invoice_vals)
+            
+            order.write({
+                'invoice_id': invoice.id,
+                'state': 'invoiced'
+            })
+            
             if order.invoice_id:
                 order._log_processing_step(f"✅ Invoice created: {order.invoice_id.name}")
                 _logger.info(f"Invoice {order.invoice_id.name} created for order {order.name}")
@@ -435,7 +533,7 @@ class FacilitatorOrder(models.Model):
                 order._log_processing_step(f"❌ Invoice creation failed")
                 _logger.warning(f"Invoice creation failed for order {order.name}")
                 
-        return result
+        return True
 
     def _prepare_invoice_values(self):
         """Prepare the invoice values"""
@@ -451,8 +549,6 @@ class FacilitatorOrder(models.Model):
             ], limit=1)
             if overridden_partner:
                 partner = overridden_partner
-
-        # Get fiscal position
 
         return {
             'move_type': 'out_invoice',
@@ -496,61 +592,113 @@ class FacilitatorOrder(models.Model):
         }
         
     def action_set_shipped(self):
-        self.write({'state': 'shipped'})
+        """Mark order as shipped and send notification email"""
+        for order in self:
+            order.write({'state': 'shipped'})
+            order._log_processing_step(f"📦 Order marked as shipped")
+            
         template = self.env.ref('inclue_journey_v2.email_template_order_shipped', False)
         if template:
             for order in self:
                 template.send_mail(order.id, force_send=True)
+                order._log_processing_step(f"📧 Shipping notification sent")
         return True
     
     def action_set_done(self):
-        self.write({'state': 'done'})
+        """Mark order as done/completed"""
+        for order in self:
+            order.write({'state': 'done'})
+            order._log_processing_step(f"✅ Order marked as completed")
         return True
     
     def action_cancel(self):
-        self.write({'state': 'cancel'})
+        """Cancel the order"""
+        for order in self:
+            order.write({'state': 'cancel'})
+            order._log_processing_step(f"❌ Order cancelled")
         return True
+
+
+class FacilitatorOrderLine(models.Model):
+    """Order line items for facilitator orders"""
+    _name = 'inclue.facilitator.order.line'
+    _description = 'Facilitator Order Line'
     
-    class FacilitatorOrderLine(models.Model):
-        _name = 'inclue.facilitator.order.line'
-        _description = 'Facilitator Order Line'
-        
-        order_id = fields.Many2one('inclue.facilitator.order', required=True, ondelete='cascade')
-        product_id = fields.Many2one(
-            'product.product', 
-            required=True, 
-            domain="[('is_inclue_card', '=', True)]",
-            string='Product'
-        )
-        quantity = fields.Float('Quantity', default=1.0, required=True)
-        
-        unit_price = fields.Monetary(
-            string='Unit Price', 
-            compute='_compute_unit_price', 
-            store=True,
-            currency_field='currency_id'
-        )
-        subtotal = fields.Monetary(
-            string='Subtotal', 
-            compute='_compute_subtotal', 
-            store=True,
-            currency_field='currency_id'
-        )
-        currency_id = fields.Many2one(related='order_id.currency_id', store=True)
-        
-        @api.depends('product_id', 'order_id.facilitator_type')
-        def _compute_unit_price(self):
-            for line in self:
-                if line.product_id and line.order_id:
-                    pricelist = line.order_id._get_facilitator_pricelist()
-                    line.unit_price = line.product_id.get_facilitator_price(
-                        line.order_id.facilitator_type, 
-                        pricelist
-                    )
+    order_id = fields.Many2one(
+        'inclue.facilitator.order', 
+        required=True, 
+        ondelete='cascade',
+        string='Order'
+    )
+    product_id = fields.Many2one(
+        'product.product', 
+        required=True, 
+        domain="[('is_inclue_card', '=', True)]",
+        string='Product'
+    )
+    quantity = fields.Float(
+        'Quantity', 
+        default=1.0, 
+        required=True,
+        digits='Product Unit of Measure'
+    )
+    
+    unit_price = fields.Monetary(
+        string='Unit Price', 
+        compute='_compute_unit_price', 
+        store=True,
+        currency_field='currency_id'
+    )
+    subtotal = fields.Monetary(
+        string='Subtotal', 
+        compute='_compute_subtotal', 
+        store=True,
+        currency_field='currency_id'
+    )
+    currency_id = fields.Many2one(
+        related='order_id.currency_id', 
+        store=True,
+        string='Currency'
+    )
+    
+    @api.depends('product_id', 'order_id.facilitator_type')
+    def _compute_unit_price(self):
+        """Compute unit price based on facilitator type and pricelist"""
+        for line in self:
+            if line.product_id and line.order_id:
+                pricelist = line.order_id._get_facilitator_pricelist()
+                if pricelist:
+                    # Use pricelist to get price
+                    try:
+                        price = pricelist.get_product_price(line.product_id, 1.0, line.order_id.facilitator_id)
+                        line.unit_price = price
+                        _logger.debug(f"Pricelist price for {line.product_id.name}: {price}")
+                    except Exception as e:
+                        _logger.warning(f"Failed to get pricelist price: {e}, using list price")
+                        line.unit_price = line.product_id.list_price
                 else:
-                    line.unit_price = 0.0
-        
-        @api.depends('quantity', 'unit_price')
-        def _compute_subtotal(self):
-            for line in self:
-                line.subtotal = line.quantity * line.unit_price
+                    # Fallback to product list price
+                    line.unit_price = line.product_id.list_price
+                    _logger.debug(f"Using list price for {line.product_id.name}: {line.unit_price}")
+            else:
+                line.unit_price = 0.0
+    
+    @api.depends('quantity', 'unit_price')
+    def _compute_subtotal(self):
+        """Compute line subtotal"""
+        for line in self:
+            line.subtotal = line.quantity * line.unit_price
+    
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        """Update pricing when product changes"""
+        if self.product_id:
+            self._compute_unit_price()
+    
+    def name_get(self):
+        """Custom display name for order lines"""
+        result = []
+        for line in self:
+            name = f"{line.order_id.name} - {line.product_id.name}"
+            result.append((line.id, name))
+        return result

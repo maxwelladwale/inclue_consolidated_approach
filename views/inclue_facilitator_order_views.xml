@@ -36,29 +36,51 @@
               <group string="Facilitator Information">
                 <field name="facilitator_id" options="{'no_create': True}"/>
                 <field name="facilitator_type" widget="radio"/>
+                <field name="facility_language_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
               </group>
               <group string="Order Details">
                 <field name="create_date" readonly="1" string="Order Date"/>
+                <field name="total_price" widget="monetary"/>
+                <field name="currency_id" invisible="1"/>
                 <field name="has_been_processed" readonly="1"/>
                 <field name="invoice_id" readonly="1"
                        attrs="{'invisible': [('invoice_id','=', False)]}"/>
               </group>
             </group>
+            
             <notebook>
-              <page string="Card Order Details">
-                <group>
-                  <group string="Free Items">
-                    <field name="gift_card_qty"/>
-                    <field name="followup_card_qty"/>
-                  </group>
-                  <group string="Paid Items">
-                    <field name="participant_deck_qty"/>
-                    <field name="facilitator_deck_qty"/>
-
-                  </group>
+              <page string="Order Lines">
+                <field name="order_line_ids" widget="one2many_list" mode="tree,form">
+                  <tree string="Order Lines" editable="bottom">
+                    <field name="product_id" 
+                           domain="[('is_inclue_card', '=', True)]"
+                           options="{'no_create': True}"/>
+                    <field name="quantity"/>
+                    <field name="unit_price" readonly="1"/>
+                    <field name="subtotal" readonly="1" sum="Total"/>
+                    <field name="currency_id" invisible="1"/>
+                  </tree>
+                  <form string="Order Line">
+                    <group>
+                      <field name="product_id" 
+                             domain="[('is_inclue_card', '=', True)]"/>
+                      <field name="quantity"/>
+                      <field name="unit_price" readonly="1"/>
+                      <field name="subtotal" readonly="1"/>
+                    </group>
+                  </form>
+                </field>
+                
+                <!-- Legacy quantity fields for display/compatibility -->
+                <group string="Summary" col="4">
+                  <field name="gift_card_qty" readonly="1"/>
+                  <field name="followup_card_qty" readonly="1"/>
+                  <field name="participant_deck_qty" readonly="1"/>
+                  <field name="facilitator_deck_qty" readonly="1"/>
                 </group>
               </page>
+              
               <page string="Shipping Information">
                 <group>
                   <field name="shipping_address"/>
@@ -66,13 +88,13 @@
                   <field name="contact_person"/>
                 </group>
               </page>
+              
               <page string="Invoice Information">
                 <group>
                   <field name="invoice_company_name"/>
                   <field name="invoice_address"/>
                   <field name="invoice_country_id" options="{'no_create': True}"/>
                   <field name="po_number"/>
-                  <field name="total_price" widget="monetary"/>
                 </group>
               </page>
             </notebook>
@@ -87,7 +109,7 @@
     </record>
 
     <!-- ========================================= -->
-    <!-- Tree (List) View                          -->
+    <!-- Tree (List) View               -->
     <!-- ========================================= -->
     <record id="view_inclue_facilitator_order_tree" model="ir.ui.view">
       <field name="name">inclue.facilitator.order.tree</field>
@@ -103,14 +125,15 @@
           <field name="company_id" groups="base.group_multi_company"/>
           <field name="create_date" string="Order Date"/>
           <field name="shipping_country_id"/>
-          <field name="total_price" sum="Total"/>
+          <field name="total_price" sum="Total" widget="monetary"/>
+          <field name="currency_id" invisible="1"/>
           <field name="state"/>
         </tree>
       </field>
     </record>
 
     <!-- ========================================= -->
-    <!-- Search View                               -->
+    <!-- Search View                     -->
     <!-- ========================================= -->
     <record id="view_inclue_facilitator_order_search" model="ir.ui.view">
       <field name="name">inclue.facilitator.order.search</field>
@@ -152,6 +175,65 @@
     <!-- ========================================= -->
     <!-- Action                                    -->
     <!-- ========================================= -->
+    <record id="view_inclue_facilitator_order_line_tree" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.line.tree</field>
+      <field name="model">inclue.facilitator.order.line</field>
+      <field name="arch" type="xml">
+        <tree string="Order Lines">
+          <field name="order_id"/>
+          <field name="product_id"/>
+          <field name="quantity"/>
+          <field name="unit_price" widget="monetary"/>
+          <field name="subtotal" widget="monetary"/>
+          <field name="currency_id" invisible="1"/>
+        </tree>
+      </field>
+    </record>
+
+    <record id="view_inclue_facilitator_order_line_form" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.line.form</field>
+      <field name="model">inclue.facilitator.order.line</field>
+      <field name="arch" type="xml">
+        <form string="Order Line">
+          <sheet>
+            <group>
+              <field name="order_id"/>
+              <field name="product_id" domain="[('is_inclue_card', '=', True)]"/>
+              <field name="quantity"/>
+              <field name="unit_price" readonly="1"/>
+              <field name="subtotal" readonly="1"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Product Template Views (Inherit)         -->
+    <!-- ========================================= -->
+    <record id="view_product_template_form_inclue_inherit" model="ir.ui.view">
+      <field name="name">product.template.form.inclue</field>
+      <field name="model">product.template</field>
+      <field name="inherit_id" ref="product.product_template_form_view"/>
+      <field name="arch" type="xml">
+        <xpath expr="//page[@name='general_information']" position="after">
+          <page string="iN-Clue Settings" attrs="{'invisible': [('is_inclue_card', '=', False)]}">
+            <group>
+              <field name="is_inclue_card"/>
+              <field name="inclue_card_type" attrs="{'required': [('is_inclue_card', '=', True)]}"/>
+              <field name="facilitator_pricing_type" attrs="{'invisible': [('is_inclue_card', '=', False)]}"/>
+            </group>
+          </page>
+        </xpath>
+        <xpath expr="//field[@name='sale_ok']" position="after">
+          <field name="is_inclue_card"/>
+        </xpath>
+      </field>
+    </record>
+
+    <!-- ========================================= -->
+    <!-- Actions                                   -->
+    <!-- ========================================= -->
     <record id="action_inclue_facilitator_order" model="ir.actions.act_window">
       <field name="name">Facilitator Orders</field>
       <field name="res_model">inclue.facilitator.order</field>
@@ -167,13 +249,131 @@
       </field>
     </record>
 
-    <!-- ========================================= -->
-    <!-- Menu Item                                 -->
-    <!-- ========================================= -->
-    <!-- <menuitem id="menu_inclue_facilitator_orders"
-              name="Facilitator Orders"
-              parent="inclue_consolidated_approach.menu_inclue_config"
-              action="action_inclue_facilitator_order"
-              sequence="15"/> -->
+    <record id="action_inclue_card_products" model="ir.actions.act_window">
+      <field name="name">iN-Clue Card Products</field>
+      <field name="res_model">product.template</field>
+      <field name="view_mode">tree,form</field>
+      <field name="domain">[('is_inclue_card', '=', True)]</field>
+      <field name="context">{'default_is_inclue_card': True, 'default_type': 'service'}</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+          Create iN-Clue card products
+        </p>
+        <p>
+          Define the different types of cards available for facilitator orders.
+        </p>
+      </field>
+    </record>
+
+    <!-- Enhanced Form View with Auto-Processing (Inherits existing view) -->
+    <record id="view_inclue_facilitator_order_form_auto_process_inherit" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.form.auto.process</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="inherit_id" ref="view_inclue_facilitator_order_form"/>
+      <field name="arch" type="xml">
+        
+        <!-- Add auto-processing buttons to header -->
+        <xpath expr="//header" position="inside">
+          <button name="action_retry_auto_processing" 
+                  string="Retry Auto-Processing" 
+                  type="object"
+                  class="oe_highlight" 
+                  attrs="{'invisible': ['|', ('auto_processed', '=', True), ('state', 'not in', ['draft', 'confirmed'])]}"/>
+          <button name="action_view_processing_log" 
+                  string="View Processing Log" 
+                  type="object"
+                  class="btn-info" 
+                  attrs="{'invisible': [('processing_log', '=', False)]}"/>
+        </xpath>
+        
+        <!-- Add auto-processing fields in the main group -->
+        <xpath expr="//group[2]" position="after">
+          <group string="Auto-Processing Status" attrs="{'invisible': [('auto_process', '=', False)]}">
+            <field name="auto_process" readonly="1"/>
+            <field name="auto_processed" readonly="1"/>
+            <field name="last_processing_error" readonly="1" 
+                   attrs="{'invisible': [('last_processing_error', '=', False)]}"
+                   widget="text"/>
+          </group>
+        </xpath>
+        
+        <!-- Add auto-processing configuration in new tab -->
+        <xpath expr="//notebook" position="inside">
+          <page string="Auto-Processing">
+            <group>
+              <group string="Configuration">
+                <field name="auto_process" 
+                       attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                <field name="auto_processed" readonly="1"/>
+              </group>
+              <group string="Status">
+                <field name="last_processing_error" readonly="1" 
+                       widget="text"
+                       attrs="{'invisible': [('last_processing_error', '=', False)]}"/>
+              </group>
+            </group>
+            
+            <group string="Processing Log" attrs="{'invisible': [('processing_log', '=', False)]}">
+              <field name="processing_log" readonly="1" widget="text" nolabel="1"/>
+            </group>
+            
+            <div class="alert alert-info" role="alert" attrs="{'invisible': [('auto_process', '=', False)]}">
+              <h4>🤖 Auto-Processing Enabled</h4>
+              <p>This order will be automatically:</p>
+              <ul>
+                <li>✅ Confirmed upon creation</li>
+                <li>🧾 Invoiced (if amount > $0)</li>
+                <li>📧 Invoice emailed to customer</li>
+                <li>📦 Moved to shipped (if free order)</li>
+              </ul>
+            </div>
+            
+            <div class="alert alert-warning" role="alert" attrs="{'invisible': [('auto_process', '=', True)]}">
+              <h4>⚠️ Manual Processing Required</h4>
+              <p>Auto-processing is disabled. You'll need to manually:</p>
+              <ul>
+                <li>Confirm the order</li>
+                <li>Create and send invoices</li>
+                <li>Update order status</li>
+              </ul>
+            </div>
+          </page>
+        </xpath>
+        
+      </field>
+    </record>
+    
+    <!-- Enhanced Tree View to show auto-processing status (Inherits existing view) -->
+    <record id="view_inclue_facilitator_order_tree_auto_process_inherit" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.tree.auto.process</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="inherit_id" ref="view_inclue_facilitator_order_tree"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='state']" position="before">
+          <field name="auto_processed" optional="show"/>
+          <field name="last_processing_error" optional="hide"/>
+        </xpath>
+      </field>
+    </record>
+    
+    <!-- Enhanced Search View (Inherits existing view) -->
+    <record id="view_inclue_facilitator_order_search_auto_process_inherit" model="ir.ui.view">
+      <field name="name">inclue.facilitator.order.search.auto.process</field>
+      <field name="model">inclue.facilitator.order</field>
+      <field name="inherit_id" ref="view_inclue_facilitator_order_search"/>
+      <field name="arch" type="xml">
+        <xpath expr="//filter[@name='state_cancel']" position="after">
+          <separator/>
+          <filter string="Auto-Processed" name="auto_processed" domain="[('auto_processed','=',True)]"/>
+          <filter string="Manual Processing" name="manual_processing" domain="[('auto_process','=',False)]"/>
+          <filter string="Processing Errors" name="processing_errors" domain="[('last_processing_error','!=',False)]"/>
+        </xpath>
+        
+        <xpath expr="//group[@expand='0']" position="inside">
+          <filter string="Auto-Processing Status" name="group_by_auto_processed" context="{'group_by':'auto_processed'}"/>
+        </xpath>
+      </field>
+    </record>
+
   </data>
 </odoo>
