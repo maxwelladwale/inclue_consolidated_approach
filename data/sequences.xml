@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Sequence for Facilitator Orders -->
+        <record id="sequence_facilitator_order" model="ir.sequence">
+            <field name="name">Facilitator Order</field>
+            <field name="code">inclue.facilitator.order</field>
+            <field name="prefix">FO</field>
+            <field name="padding">5</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+    </data>
+</odoo>

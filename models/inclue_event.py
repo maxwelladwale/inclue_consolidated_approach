@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 from datetime import datetime, timedelta
+from odoo.exceptions import UserError
 
 import logging
 
@@ -26,6 +27,8 @@ class InclueEvent(models.Model):
         string='Team Leader',
         help="The team leader associated with this cohort"
     )
+
+    active = fields.Boolean(default=True)
 
     # Journey Completion Fields
     completion_survey_triggered = fields.Boolean(
@@ -118,6 +121,9 @@ class InclueEvent(models.Model):
     # New fields for invoice tracking
     invoice_id = fields.Many2one('account.move', string='Generated Invoice', readonly=True)
     invoice_created = fields.Boolean('Invoice Created', default=False, readonly=True)
+
+    def unlink(self):
+        raise UserError("Events cannot be deleted. Please archive instead.")
 
     @api.model
     def create(self, vals):
