@@ -7,4 +7,7 @@ access_inclue_participant_manager,inclue.participant.manager,model_inclue_partic
 access_inclue_facilitator_order_user,inclue.facilitator.order.user,model_inclue_facilitator_order,base.group_user,1,1,1,0
 access_inclue_facilitator_order_manager,inclue.facilitator.order.manager,model_inclue_facilitator_order,event.group_event_manager,1,1,1,1
 
+access_inclue_facilitator_order_line_user,inclue.facilitator.order.line.user,model_inclue_facilitator_order_line,base.group_user,1,1,1,0
+access_inclue_facilitator_order_line_manager,inclue.facilitator.order.line.manager,model_inclue_facilitator_order_line,event.group_event_manager,1,1,1,1
+
 access_inclue_invoice_info_user,access.inclue.invoice.info.user,model_inclue_invoice_info,base.group_user,1,1,1,0
