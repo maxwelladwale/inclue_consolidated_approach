@@ -17,7 +17,13 @@ class InclueParticipant(models.Model):
     email = fields.Char('Email', required=True, tracking=True)
     team_lead_name = fields.Char('Team Lead Name', tracking=True)
     company_name = fields.Char('Company Name', tracking=True)
-    
+
+    journey_code = fields.Char(
+        related='event_id.journey_code',
+        store=True,
+        string='Journey Code',
+        help="Journey code for this participant's session"
+    )
     event_id = fields.Many2one('event.event', string='Event', required=True, ondelete='cascade')
     facilitator_id = fields.Many2one('res.partner', related='event_id.facilitator_id', store=True)
     session_type = fields.Selection(related='event_id.session_type', store=True)
@@ -82,6 +88,89 @@ class InclueParticipant(models.Model):
             participant.send_survey()
         
         return participant
+    
+    @api.model
+    def find_or_create_by_journey_code(self, journey_code, email):
+        """
+        Find existing participant or create/progress them in the correct session
+        Returns participant in their appropriate session (kickoff or next available)
+        """
+        # Find the kickoff event by journey code
+        kickoff_event = self.env['event.event'].find_journey_by_code(journey_code)
+        
+        if not kickoff_event:
+            return None, "Invalid journey code"
+        
+        # Find participant's current session in this journey
+        current_participant = self.search([
+            ('email', '=', email),
+            ('cohort', '=', kickoff_event.cohort),
+            ('is_latest', '=', True)
+        ], limit=1)
+        
+        if current_participant:
+            _logger.info(f"Found existing participant {current_participant.id} in {current_participant.session_type}")
+            
+            # Check if they've completed their current session
+            if current_participant.survey_completed:
+                _logger.info(f"Participant {current_participant.id} completed {current_participant.session_type}, checking for next session")
+                
+                # Get next session type
+                next_session_type = self._get_next_session_type(current_participant.session_type)
+                
+                if next_session_type:
+                    # Find next session event in the same cohort
+                    next_event = self.env['event.event'].search([
+                        ('session_type', '=', next_session_type),
+                        ('cohort', '=', kickoff_event.cohort),
+                        ('is_inclue_event', '=', True),
+                        ('active', '=', True)
+                    ], limit=1)
+                    
+                    if next_event:
+                        # Check if participant already exists for next session
+                        existing_next_participant = self.search([
+                            ('email', '=', email),
+                            ('event_id', '=', next_event.id)
+                        ], limit=1)
+                        
+                        if existing_next_participant:
+                            # Update is_latest flags
+                            current_participant.is_latest = False
+                            existing_next_participant.is_latest = True
+                            _logger.info(f"Found existing participant {existing_next_participant.id} for {next_session_type}")
+                            return existing_next_participant, f"Advanced to {next_session_type} session"
+                        else:
+                            # Create new participant for next session
+                            new_participant = self._create_next_session_participant(current_participant, next_session_type)
+                            if new_participant:
+                                return new_participant, f"Advanced to {next_session_type} session"
+                            else:
+                                return current_participant, f"No {next_session_type} session available yet"
+                    else:
+                        _logger.warning(f"No {next_session_type} event found in cohort {kickoff_event.cohort}")
+                        return current_participant, f"No {next_session_type} session scheduled yet"
+                else:
+                    _logger.info(f"Participant {current_participant.id} has completed all sessions")
+                    return current_participant, "All sessions completed"
+            else:
+                # Return current participant if they haven't completed their session
+                _logger.info(f"Participant {current_participant.id} still needs to complete {current_participant.session_type}")
+                return current_participant, f"Continue {current_participant.session_type} session"
+        
+        # No existing participant found - create new one in kickoff
+        _logger.info(f"Creating new participant for {email} in kickoff session")
+        new_participant = self.create({
+            'name': email.split('@')[0].title(),
+            'email': email,
+            'event_id': kickoff_event.id,
+            'team_lead_name': 'TBD',
+            'company_name': 'TBD',
+            'is_latest': True
+        })
+        
+        return new_participant, "Started journey with kickoff session"
+
 
     @api.depends('user_input_id.state')
     def _compute_survey_state(self):
