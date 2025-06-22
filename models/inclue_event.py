@@ -1,7 +1,8 @@
 from odoo import models, fields, api
 from datetime import datetime, timedelta
 from odoo.exceptions import UserError
-
+import random
+import string
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -15,6 +16,14 @@ class InclueEvent(models.Model):
         string='Cohort ID',
         help="Unique identifier for this cohort (e.g., 'CompanyA_CohortA')",
         index=True
+    )
+
+    journey_code = fields.Char(
+        'Journey Code', 
+        size=8, 
+        readonly=True, 
+        copy=False,
+        help="Unique 8-character code for participants to join this journey"
     )
 
     # team_leader_id = fields.Many2one(
@@ -132,6 +141,11 @@ class InclueEvent(models.Model):
 
         if event.is_inclue_event and event.session_type == 'kickoff' and not event.cohort:
             event.cohort = event._generate_cohort_id()
+            
+         # Generate journey code for kickoff events
+        if event.is_inclue_event and event.session_type == 'kickoff' and not event.journey_code:
+            event.journey_code = self._generate_journey_code()
+            _logger.info("Generated journey code: %s for event: %s", event.journey_code, event.name)
         
         # Create invoice if this is an iN-Clue event
         if event.is_inclue_event and event.session_type == 'kickoff':
@@ -191,7 +205,39 @@ class InclueEvent(models.Model):
             _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
             raise
 
-
+    def _generate_journey_code(self):
+        """Generate unique 8-character journey code: 4 letters + 4 numbers"""
+        max_attempts = 100
+        
+        for _ in range(max_attempts):
+            # Generate 4 random letters + 4 random numbers
+            letters = ''.join(random.choices(string.ascii_uppercase, k=4))
+            numbers = ''.join(random.choices(string.digits, k=4))
+            code = letters + numbers
+            
+            # Check if code already exists
+            existing = self.env['event.event'].search([
+                ('journey_code', '=', code),
+                ('is_inclue_event', '=', True)
+            ], limit=1)
+            
+            if not existing:
+                return code
+        
+        # Fallback if we can't generate unique code
+        raise ValueError("Unable to generate unique journey code after 100 attempts")
+    
+    @api.model
+    def find_journey_by_code(self, journey_code):
+        """Find kickoff event by journey code"""
+        return self.search([
+            ('journey_code', '=', journey_code.upper()),
+            ('session_type', '=', 'kickoff'),
+            ('is_inclue_event', '=', True),
+            ('active', '=', True)
+        ], limit=1)
+    
+    
     def _generate_cohort_id(self):
         """Generate unique cohort ID like 'CompanyA_CohortA'"""
         self.ensure_one()
