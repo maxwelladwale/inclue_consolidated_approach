@@ -78,6 +78,7 @@
                   <field name="followup_card_qty" readonly="1"/>
                   <field name="participant_deck_qty" readonly="1"/>
                   <field name="facilitator_deck_qty" readonly="1"/>
+                  <field name="promo_package_qty" readonly="1"/>
                 </group>
               </page>
               

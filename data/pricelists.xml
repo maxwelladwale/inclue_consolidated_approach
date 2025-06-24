@@ -101,6 +101,14 @@
             <field name="fixed_price">0.0</field>
             <field name="min_quantity">0</field>
         </record>
-        
+
+        <record id="pricelist_item_promo_package_external" model="product.pricelist.item">
+            <field name="pricelist_id" ref="pricelist_external_facilitator"/>
+            <field name="product_tmpl_id" ref="product_promo_package"/>
+            <field name="applied_on">1_product</field>
+            <field name="compute_price">fixed</field>
+            <field name="fixed_price">5.0</field>
+            <field name="min_quantity">0</field>
+        </record>
     </data>
 </odoo>

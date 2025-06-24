@@ -28,7 +28,7 @@ def migrate(cr, version):
     
     # Get the card products
     products = {}
-    card_types = ['gift_card', 'followup_card', 'participant_deck', 'facilitator_deck']
+    card_types = ['gift_card', 'followup_card', 'participant_deck', 'facilitator_deck', 'promo_package']
     
     for card_type in card_types:
         product = env['product.product'].search([
@@ -58,6 +58,7 @@ def migrate(cr, version):
                 (order.followup_card_qty, 'followup_card'),
                 (order.participant_deck_qty, 'participant_deck'),
                 (order.facilitator_deck_qty, 'facilitator_deck'),
+                (order.promo_package_qty, 'promo_package'),
             ]
             
             for quantity, card_type in quantity_mappings:
@@ -92,7 +93,7 @@ def manual_migrate_orders():
     ])
     
     products = {}
-    for card_type in ['gift_card', 'followup_card', 'participant_deck', 'facilitator_deck']:
+    for card_type in ['gift_card', 'followup_card', 'participant_deck', 'facilitator_deck', 'promo_package']:
         product = env['product.product'].search([
             ('is_inclue_card', '=', True),
             ('inclue_card_type', '=', card_type)
@@ -131,6 +132,12 @@ def manual_migrate_orders():
                 'order_id': order.id,
                 'product_id': products['facilitator_deck'].id,
                 'quantity': order.facilitator_deck_qty,
+            })
+        if order.promo_package_qty > 0 and 'promo_package' in products:
+            order_lines_to_create.append({
+                'order_id': order.id,
+                'product_id': products['promo_package'].id,
+                'quantity': order.promo_package_qty,
             })
         
         # Create the order lines
