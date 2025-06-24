@@ -6,3 +6,5 @@ from . import inclue_facilitator_order
 from . import inclue_event_invoice_info
 from . import survey_user_input
 from . import product_template
+from . import inclue_3hr_session
+from . import inclue_3hr_sale_order
