@@ -102,6 +102,12 @@ class FacilitatorOrder(models.Model):
         compute='_compute_legacy_quantities',
         store=False
     )
+
+    promo_package_qty = fields.Integer(
+        string="Promo Package Quantity", 
+        compute='_compute_legacy_quantities',
+        store=False
+    )
     
     # Shipping information
     shipping_address = fields.Text(string='Shipping Address', tracking=True)
@@ -183,7 +189,7 @@ class FacilitatorOrder(models.Model):
         """Compute legacy quantity fields from order lines for backward compatibility"""
         for order in self:
             # Initialize all quantities to 0
-            gift_qty = followup_qty = participant_qty = facilitator_qty = 0
+            gift_qty = followup_qty = participant_qty = facilitator_qty = promo_package_qty = 0
             
             for line in order.order_line_ids:
                 if line.product_id.inclue_card_type == 'gift_card':
@@ -194,11 +200,14 @@ class FacilitatorOrder(models.Model):
                     participant_qty += line.quantity
                 elif line.product_id.inclue_card_type == 'facilitator_deck':
                     facilitator_qty += line.quantity
+                elif line.product_id.inclue_card_type == 'promo_package':
+                    promo_package_qty += line.quantity
             
             order.gift_card_qty = gift_qty
             order.followup_card_qty = followup_qty
             order.participant_deck_qty = participant_qty
             order.facilitator_deck_qty = facilitator_qty
+            order.promo_package_qty = promo_package_qty
     
     @api.depends('order_line_ids.subtotal')
     def _compute_total_price(self):

@@ -67,6 +67,21 @@
             <field name="purchase_ok">False</field>
             <field name="description">Facilitator deck cards for running iN-Clue sessions</field>
         </record>
-        
+
+        <!-- Promo Package Product -->
+        <record id="product_promo_package" model="product.template">
+            <field name="name">iN-Clue Promo Package</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">5.0</field>  <!-- €5 as per mindmap -->
+            <field name="standard_price">3.0</field>
+            <field name="is_inclue_card">True</field>
+            <field name="inclue_card_type">promo_package</field>
+            <field name="facilitator_pricing_type">same</field>
+            <field name="facilitator_access">external</field>  <!-- External only -->
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="description">Promotional package exclusively for external facilitators</field>
+        </record>
     </data>
 </odoo>

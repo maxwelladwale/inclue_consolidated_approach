@@ -9,7 +9,14 @@ class ProductTemplate(models.Model):
         ('followup_card', 'Follow-up Card'),
         ('participant_deck', 'Participant Deck'),
         ('facilitator_deck', 'Facilitator Deck'),
+        ('promo_package', 'Promo Package'),
     ], string='Card Type')
+
+    facilitator_access = fields.Selection([
+        ('all', 'All Facilitators'),
+        ('external', 'External Facilitators Only'),
+        ('internal', 'Internal Facilitators Only'),
+    ], string='Facilitator Access', default='all')
     
     facilitator_pricing_type = fields.Selection([
         ('same', 'Same Price for All Facilitators'),
