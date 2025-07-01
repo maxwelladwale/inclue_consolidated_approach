@@ -35,6 +35,7 @@
         'data/pricelists.xml',
         'data/sequences.xml',
         'data/cron_jobs.xml',
+        'data/email_template_pre_session.xml',
         # 'data/email_templates.xml',
         
         # Views

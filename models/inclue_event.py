@@ -12,6 +12,17 @@ class InclueEvent(models.Model):
     
     is_inclue_event = fields.Boolean('iN-Clue Event', default=False)
 
+    pre_session_email_sent = fields.Boolean(
+        'Pre-Session Email Sent', 
+        default=False,
+        help="Whether the pre-session reminder email has been sent"
+    )
+    
+    pre_session_email_sent_date = fields.Datetime(
+        'Pre-Session Email Sent Date',
+        help="When the pre-session reminder email was sent"
+    )
+        
     cohort = fields.Char(
         string='Cohort ID',
         help="Unique identifier for this cohort (e.g., 'CompanyA_CohortA')",
@@ -227,15 +238,68 @@ class InclueEvent(models.Model):
         # Fallback if we can't generate unique code
         raise ValueError("Unable to generate unique journey code after 100 attempts")
     
+    # Add this debug version to your event model to troubleshoot
+
     @api.model
     def find_journey_by_code(self, journey_code):
-        """Find kickoff event by journey code"""
-        return self.search([
+        """Find kickoff event by journey code - DEBUG VERSION"""
+        _logger.info("=== DEBUGGING JOURNEY CODE SEARCH ===")
+        _logger.info("Searching for journey code: '%s'", journey_code)
+        _logger.info("Journey code type: %s", type(journey_code))
+        _logger.info("Journey code length: %d", len(journey_code))
+        
+        # First, let's see ALL events with journey codes
+        all_events_with_codes = self.search([
+            ('journey_code', '!=', False),
+            ('is_inclue_event', '=', True)
+        ])
+        _logger.info("All events with journey codes:")
+        for event in all_events_with_codes:
+            _logger.info("  Event ID %s: journey_code='%s', session_type='%s', active=%s", 
+                        event.id, event.journey_code, event.session_type, event.active)
+        
+        # Now search with exact criteria
+        search_domain = [
             ('journey_code', '=', journey_code.upper()),
             ('session_type', '=', 'kickoff'),
             ('is_inclue_event', '=', True),
             ('active', '=', True)
-        ], limit=1)
+        ]
+        _logger.info("Search domain: %s", search_domain)
+        
+        result = self.search(search_domain, limit=1)
+        _logger.info("Search result: %s", result)
+        
+        if result:
+            _logger.info("Found event: ID %s, Name: %s", result.id, result.name)
+        else:
+            _logger.warning("No event found with journey code: %s", journey_code)
+            
+            # Let's check each criteria individually
+            _logger.info("=== INDIVIDUAL CRITERIA CHECK ===")
+            
+            # Check journey_code match
+            code_matches = self.search([('journey_code', '=', journey_code.upper())])
+            _logger.info("Events matching journey_code '%s': %s", journey_code.upper(), code_matches.ids)
+            
+            # Check kickoff events
+            kickoff_events = self.search([('session_type', '=', 'kickoff'), ('is_inclue_event', '=', True)])
+            _logger.info("Kickoff events: %s", kickoff_events.ids)
+            
+            # Check active events
+            active_events = self.search([('active', '=', True), ('is_inclue_event', '=', True)])
+            _logger.info("Active events: %s", active_events.ids)
+            
+            # Check if the specific event exists but doesn't match all criteria
+            specific_event = self.search([('journey_code', '=', journey_code.upper())], limit=1)
+            if specific_event:
+                _logger.info("Found event with code but wrong criteria:")
+                _logger.info("  ID: %s, session_type: %s, is_inclue_event: %s, active: %s", 
+                            specific_event.id, specific_event.session_type, 
+                            specific_event.is_inclue_event, specific_event.active)
+        
+        _logger.info("=== END DEBUGGING ===")
+        return result
     
     
     def _generate_cohort_id(self):
@@ -682,3 +746,100 @@ class InclueEvent(models.Model):
                     'type': 'danger',
                 }
             }
+
+    @api.model
+    def send_pre_session_reminders(self):
+        """
+        Cron job method to send pre-session reminder emails
+        Runs daily and sends emails for sessions happening tomorrow
+        """
+        try:
+            # Calculate tomorrow's date range
+            tomorrow = fields.Date.today() + timedelta(days=1)
+            tomorrow_start = fields.Datetime.to_datetime(tomorrow)
+            tomorrow_end = tomorrow_start + timedelta(days=1) - timedelta(seconds=1)
+            
+            _logger.info("Checking for sessions on %s", tomorrow)
+            
+            # Find all iN-Clue events happening tomorrow that haven't received reminder
+            events_tomorrow = self.search([
+                ('is_inclue_event', '=', True),
+                ('date_begin', '>=', tomorrow_start),
+                ('date_begin', '<=', tomorrow_end),
+                ('pre_session_email_sent', '=', False),
+                ('facilitator_id', '!=', False),
+                ('facilitator_id.email', '!=', False),
+                ('active', '=', True)
+            ])
+            
+            _logger.info("Found %d events for tomorrow requiring reminders", len(events_tomorrow))
+            
+            # Get email template
+            template = self.env.ref('inclue-consolidated-approach.email_template_pre_session_reminder', False)
+            if not template:
+                _logger.error("Pre-session email template not found!")
+                return {'error': 'Email template not found'}
+            
+            sent_count = 0
+            failed_count = 0
+            
+            for event in events_tomorrow:
+                try:
+                    # Debug: Log event details
+                    _logger.info("Processing event ID %s: %s (session_type: %s)", 
+                            event.id, event.name, event.session_type)
+                    
+                    # Get journey code (from self or parent kickoff)
+                    journey_code = event.journey_code
+                    if not journey_code and event.parent_kickoff_id:
+                        journey_code = event.parent_kickoff_id.journey_code
+                        _logger.info("Using parent kickoff journey code: %s for event %s", 
+                                journey_code, event.id)
+                    
+                    _logger.info("Using journey code: %s for event %s", journey_code, event.id)
+                    _logger.info("Event facilitator: %s", event.facilitator_id.name)
+                    _logger.info("Event facilitator email: %s", event.facilitator_id.email)
+                    
+                    if not journey_code:
+                        _logger.warning("No journey code found for event ID %s", event.id)
+                    
+                    # Send email using template
+                    mail_values = template.generate_email(event.id, fields=['subject', 'body_html', 'email_from', 'email_to'])
+                    
+                    # Override email fields if needed
+                    if not mail_values.get('email_to'):
+                        mail_values['email_to'] = event.facilitator_id.email
+                    if not mail_values.get('email_from'):
+                        mail_values['email_from'] = event.company_id.email or self.env.user.email
+                    
+                    # Create and send email
+                    mail = self.env['mail.mail'].create(mail_values)
+                    mail.send()
+                    
+                    # Mark as sent
+                    event.write({
+                        'pre_session_email_sent': True,
+                        'pre_session_email_sent_date': fields.Datetime.now()
+                    })
+                    
+                    sent_count += 1
+                    _logger.info("Sent pre-session reminder for event ID %s: %s", 
+                            event.id, event.name)
+                    
+                except Exception as e:
+                    failed_count += 1
+                    _logger.error("Failed to send pre-session reminder for event ID %s: %s", 
+                                event.id, str(e))
+            
+            _logger.info("Pre-session reminder summary: %d sent, %d failed", 
+                        sent_count, failed_count)
+            
+            return {
+                'sent': sent_count,
+                'failed': failed_count,
+                'total_checked': len(events_tomorrow)
+            }
+            
+        except Exception as e:
+            _logger.error("Error in send_pre_session_reminders: %s", str(e))
+            return {'error': str(e)}

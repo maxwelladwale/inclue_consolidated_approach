@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="email_template_pre_session_reminder" model="mail.template">
+            <field name="name">iN-Clue Pre-Session Reminder</field>
+            <field name="model_id" ref="event.model_event_event"/>
+            <field name="subject">Your iN-Clue Journey Starts Tomorrow</field>
+            <field name="email_from"></field>
+            <field name="email_to"></field>
+            <field name="body_html">&lt;div style="margin: 0px; padding: 0px; font-family: Georgia, serif; line-height: 1.6; color: #333;"&gt;
+    &lt;div style="max-width: 600px; margin: 0 auto; padding: 30px; background-color: #fff;"&gt;
+        
+        &lt;h1 style="color: #2c3e50; margin-bottom: 10px; font-size: 24px; font-weight: normal;"&gt;Your iN-Clue Journey Starts Tomorrow&lt;/h1&gt;
+        
+        &lt;p style="margin-bottom: 20px;"&gt;Dear &lt;t t-esc="object.facilitator_id.name"&gt;Facilitator&lt;/t&gt;,&lt;/p&gt;
+        
+        &lt;p style="margin-bottom: 20px;"&gt;&lt;strong&gt;Congratulations! Tomorrow you begin your iN-Clue Journey &lt;t t-esc="object.session_type"/&gt; — how exciting!&lt;/strong&gt;&lt;/p&gt;
+        
+        &lt;p style="margin-bottom: 20px;"&gt;As you know, measuring the impact of this journey is essential. That's why we ask participants to complete a short survey before and after the first session and again after the last follow up.&lt;/p&gt;
+        
+        &lt;div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c;"&gt;
+            &lt;p style="margin: 0 0 15px 0; font-weight: bold;"&gt;Important:&lt;/p&gt;
+            &lt;p style="margin: 0 0 15px 0;"&gt;For security and follow-up purposes, each participant will need to enter the session-specific code.&lt;/p&gt;
+            &lt;p style="margin: 0 0 10px 0; font-weight: bold;"&gt;The code for this session is:&lt;/p&gt;
+            &lt;div style="font-size: 28px; font-weight: bold; color: #2c3e50; background-color: white; padding: 15px; border-radius: 4px; text-align: center; margin: 15px 0; border: 2px solid #3498db;"&gt;
+                &lt;t t-esc="object.journey_code or (object.parent_kickoff_id and object.parent_kickoff_id.journey_code) or 'Code not generated'"&gt;Code not generated&lt;/t&gt;
+            &lt;/div&gt;
+            &lt;p style="margin: 0;"&gt;We recommend writing it clearly on a large sheet of paper so everyone can see it easily.&lt;/p&gt;
+        &lt;/div&gt;
+        
+        &lt;div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #27ae60;"&gt;
+            &lt;p style="margin: 0 0 15px 0;"&gt;&lt;strong&gt;A gentle reminder:&lt;/strong&gt; it's a privilege to help people connect — with themselves and with each other. You can only do this if you show up focused and serene. Take a moment to ground yourself. Trust your skills. Trust the process.&lt;/p&gt;
+        &lt;/div&gt;
+        
+        &lt;p style="margin: 25px 0 15px 0; font-weight: bold;"&gt;Here are a few final tips:&lt;/p&gt;
+        &lt;ul style="margin-bottom: 25px; padding-left: 20px;"&gt;
+            &lt;li style="margin-bottom: 8px;"&gt;Stick to the timing (short is powerful!)&lt;/li&gt;
+            &lt;li style="margin-bottom: 8px;"&gt;Avoid conflict — your role is not to solve&lt;/li&gt;
+            &lt;li style="margin-bottom: 8px;"&gt;The participants are in the driver's seat&lt;/li&gt;
+            &lt;li style="margin-bottom: 8px;"&gt;You're not here to convince — just to facilitate&lt;/li&gt;
+            &lt;li style="margin-bottom: 8px;"&gt;Be authentic and observe your impact&lt;/li&gt;
+        &lt;/ul&gt;
+        
+        &lt;p style="margin-bottom: 20px; font-weight: bold; color: #27ae60;"&gt;We're rooting for you!&lt;/p&gt;
+        
+        &lt;p style="margin-bottom: 20px;"&gt;Have a beautiful session,&lt;/p&gt;
+        
+        &lt;div style="margin: 30px 0;"&gt;
+            &lt;p style="margin: 0; font-weight: bold;"&gt;Alan De Bruyne&lt;/p&gt;
+            &lt;p style="margin: 5px 0 0 0; font-style: italic; color: #666;"&gt;Creator of the iN-Clue Journey&lt;/p&gt;
+        &lt;/div&gt;
+        
+        &lt;p style="margin-bottom: 30px; font-size: 14px;"&gt;&lt;em&gt;P.S. Feel free to connect with me on LinkedIn&lt;/em&gt;&lt;/p&gt;
+        
+    &lt;/div&gt;
+&lt;/div&gt;</field>
+        </record>
+    </data>
+</odoo>
