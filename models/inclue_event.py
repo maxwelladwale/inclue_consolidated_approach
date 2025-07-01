@@ -37,6 +37,10 @@ class InclueEvent(models.Model):
         help="The team leader associated with this cohort"
     )
 
+    team_leader_email = fields.Char(
+        string='Team Leader Email',
+        help="The email of the team leader associated with this cohort"
+    )
     active = fields.Boolean(default=True)
 
     # Journey Completion Fields
