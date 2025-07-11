@@ -429,33 +429,33 @@ class InclueEvent(models.Model):
         _logger.info("=== END DEBUGGING ===")
         return result
     
-    
     def _generate_cohort_id(self):
-        """Generate unique cohort ID like 'CompanyA_CohortA'"""
+        """Generate unique cohort ID like 'Journey1', 'Journey2', etc."""
         self.ensure_one()
         
-        # Base name from company or facilitator
-        base_name = "Unknown"
-        if self.invoice_info_id and self.invoice_info_id.company_name:
-            base_name = self.invoice_info_id.company_name.replace(' ', '')[:10]
-        elif self.facilitator_id:
-            base_name = self.facilitator_id.name.replace(' ', '')[:10]
-        
-        # Find existing cohorts for this facilitator to determine suffix
+        # Find existing journeys for this facilitator to determine next number
         existing_cohorts = self.env['event.event'].search([
             ('facilitator_id', '=', self.facilitator_id.id),
             ('session_type', '=', 'kickoff'),
             ('is_inclue_event', '=', True),
             ('cohort', '!=', False),
-            ('id', '!=', self.id)
+            ('id', '!=', self.id),
+            ('active', '=', True)
         ])
-        
-        # Generate suffix (A, B, C, etc.)
-        suffix_num = len(existing_cohorts)
-        suffix = chr(65 + suffix_num)  # A=65, B=66, etc.
-        
-        return f"{base_name}_Cohort{suffix}"
 
+        journey_numbers = []
+        for event in existing_cohorts:
+            cohort = event.cohort or ''
+            if cohort.startswith('Journey') and cohort[7:].isdigit():
+                journey_numbers.append(int(cohort[7:]))
+        
+        # Get the next number in sequence
+        if journey_numbers:
+            next_number = max(journey_numbers) + 1
+        else:
+            next_number = 1
+        
+        return f"Journey{next_number}"
 
     def create_followup_sessions(self, followup_dates):
         """Create all follow-up sessions for this kickoff cohort"""
@@ -520,105 +520,6 @@ class InclueEvent(models.Model):
                         _logger.error("Failed to create invoice for event ID %s: %s", event.id, str(e))
         
         return result
-    
-    # def _create_event_invoice(self):
-    #     """Create an invoice for the iN-Clue event"""
-    #     self.ensure_one()
-        
-    #     if self.invoice_created:
-    #         _logger.warning("Invoice already exists for event ID %s", self.id)
-    #         return
-        
-    #     if not self.facilitator_id:
-    #         _logger.warning("Cannot create invoice for event ID %s: No facilitator assigned", self.id)
-    #         return
-        
-    #     invoice_vals = self._prepare_invoice_vals()
-        
-    #     try:
-    #         invoice = self.env['account.move'].create(invoice_vals)
-            
-    #         invoice_lines = self._prepare_invoice_lines()
-    #         for line_vals in invoice_lines:
-    #             line_vals['move_id'] = invoice.id
-    #             self.env['account.move.line'].create(line_vals)
-            
-    #         if self.invoice_info_id and self.invoice_info_id.email:
-    #             invoice.message_post(
-    #                 body=f"Invoice should be sent to: {self.invoice_info_id.email}",
-    #                 subject="Invoice Email Information"
-    #             )
-            
-    #         self.write({
-    #             'invoice_id': invoice.id,
-    #             'invoice_created': True
-    #         })
-            
-    #         _logger.info("Successfully created invoice ID %s for event ID %s", invoice.id, self.id)
-    #         return invoice
-            
-    #     except Exception as e:
-    #         _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
-    #         raise
-    
-    # def _prepare_invoice_vals(self):
-    #     """Prepare invoice header values"""
-    #     partner = self.facilitator_id
-        
-    #     narration = f'Invoice for iN-Clue Event: {self.name}\nSession Type: {dict(self._fields["session_type"].selection).get(self.session_type)}'
-        
-    #     # Add invoice info details to narration if available
-    #     if self.invoice_info_id:
-    #         invoice_info = self.invoice_info_id
-    #         narration += f'\n\nBilling Details:'
-    #         if invoice_info.company_name:
-    #             narration += f'\nCompany: {invoice_info.company_name}'
-    #         if invoice_info.contact_person:
-    #             narration += f'\nContact: {invoice_info.contact_person}'
-    #         if invoice_info.po_number:
-    #             narration += f'\nPO Number: {invoice_info.po_number}'
-    #         if invoice_info.address:
-    #             narration += f'\nAddress: {invoice_info.address}'
-        
-    #     invoice_vals = {
-    #         'move_type': 'out_invoice',
-    #         'partner_id': partner.id,
-    #         'invoice_date': fields.Date.today(),
-    #         'ref': f'Event: {self.name}' + (f' - PO: {self.invoice_info_id.po_number}' if self.invoice_info_id and self.invoice_info_id.po_number else ''),
-    #         'narration': narration,
-    #         'company_id': 1,
-    #     }
-        
-    #     # Override partner invoice address if invoice info has address
-    #     if self.invoice_info_id and self.invoice_info_id.address:
-    #         pass
-            
-    #     return invoice_vals
-    
-    # def _prepare_invoice_lines(self):
-    #     """Prepare invoice line values"""
-    #     session_pricing = self._get_session_pricing()
-        
-    #     lines = []
-        
-    #     lines.append({
-    #         'name': f'iN-Clue {dict(self._fields["session_type"].selection).get(self.session_type)} - {self.name}',
-    #         'quantity': 1,
-    #         'price_unit': session_pricing.get('base_price', 1000.0),  # Default price
-    #         'account_id': self._get_income_account().id,
-    #     })
-        
-    #     participant_count = len(self.participant_ids)
-    #     if participant_count > session_pricing.get('included_participants', 10):
-    #         extra_participants = participant_count - session_pricing.get('included_participants', 10)
-    #         lines.append({
-    #             'name': f'Additional participants ({extra_participants} participants)',
-    #             'quantity': extra_participants,
-    #             'price_unit': session_pricing.get('per_participant_price', 50.0),
-    #             'account_id': self._get_income_account().id,
-    #         })
-        
-    #     return lines
 
     def _prepare_invoice_lines(self):
         """Prepare invoice line using the kickoff session product"""
@@ -929,7 +830,7 @@ class InclueEvent(models.Model):
             _logger.info("Found %d events for tomorrow requiring reminders", len(events_tomorrow))
             
             # Get email template
-            template = self.env.ref('inclue-consolidated-approach.email_template_pre_session_reminder', False)
+            template = self.env.ref('inclue_consolidated_approach.email_template_pre_session_reminder', False)
             if not template:
                 _logger.error("Pre-session email template not found!")
                 return {'error': 'Email template not found'}
@@ -1017,7 +918,7 @@ class InclueEvent(models.Model):
                 ('active', '=', True),
             ])
 
-            template = self.env.ref('inclue-consolidated-approach.email_template_team_lead_reminder', raise_if_not_found=False)
+            template = self.env.ref('inclue_consolidated_approach.email_template_team_lead_reminder', raise_if_not_found=False)
             if not template:
                 _logger.error("Team Lead email template not found!")
                 return
