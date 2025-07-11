@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <record id="email_template_team_lead_reminder" model="mail.template">
@@ -6,72 +7,114 @@
             <field name="subject">Welcome to the iN-Clue Journey with Your Team</field>
             <field name="email_to"></field>
             <field name="email_from"></field>
-            <field name="body_html">
-                &lt;div style="font-family: Georgia, serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;"&gt;
-                    &lt;h2 style="color: #2E4053; font-size: 22px; margin-top: 0;"&gt;Welcome to the iN-Clue Journey&lt;/h2&gt;
+            <field name="body_html">&lt;div style="margin: 0; padding: 0; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); font-family: 'Georgia', serif; min-height: 100vh;"&gt;
+    &lt;div style="max-width: 650px; margin: 0 auto; background: #ffffff; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"&gt;
+        
+        &lt;!-- Header with branding --&gt;
+        &lt;div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); padding: 40px 30px; text-align: center; position: relative; overflow: hidden;"&gt;
+            &lt;div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; border: 3px solid rgba(139, 195, 74, 0.2); border-radius: 50%;"&gt;&lt;/div&gt;
+            &lt;div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: rgba(139, 195, 74, 0.1); border-radius: 50%;"&gt;&lt;/div&gt;
+            
+            &lt;h1 style="color: #ffffff; font-size: 32px; margin: 0 0 10px 0; font-weight: 300; letter-spacing: 2px; position: relative; z-index: 2;"&gt;
+                &lt;span style="color: #8BC34A;"&gt;iN&lt;/span&gt;&lt;span style="color: #ffffff;"&gt;·&lt;/span&gt;&lt;span style="color: #ffffff;"&gt;Clue&lt;/span&gt;
+            &lt;/h1&gt;
+            &lt;p style="color: #8BC34A; font-size: 14px; margin: 0; text-transform: uppercase; letter-spacing: 1px; position: relative; z-index: 2;"&gt;A CLUE FOR INCLUSION&lt;/p&gt;
+        &lt;/div&gt;
 
-                    &lt;p&gt;Dear &lt;t t-esc="object.resolved_team_leader_name"/&gt;,&lt;/p&gt;
+        &lt;!-- Main content --&gt;
+        &lt;div style="padding: 40px 30px;"&gt;
+            &lt;div style="text-align: center; margin-bottom: 30px;"&gt;
+                &lt;h2 style="color: #2c3e50; font-size: 28px; margin: 0 0 10px 0; font-weight: 300;"&gt;Welcome to the Journey&lt;/h2&gt;
+                &lt;div style="width: 60px; height: 3px; background: linear-gradient(90deg, #8BC34A, #7CB342); margin: 0 auto;"&gt;&lt;/div&gt;
+            &lt;/div&gt;
 
-                    &lt;p style="margin-bottom: 20px;"&gt;
-                        Congratulations — you and your team are about to embark on the <strong>iN-Clue Journey</strong>.
+            &lt;div style="font-size: 16px; line-height: 1.7; color: #555555;"&gt;
+                &lt;p style="margin-bottom: 25px; font-size: 18px;"&gt;Dear &lt;strong style="color: #2c3e50;"&gt;&lt;t t-esc="object.resolved_team_leader_name"/&gt;&lt;/strong&gt;,&lt;/p&gt;
+
+                &lt;div style="background: linear-gradient(135deg, #8BC34A15, #7CB34215); border-left: 4px solid #8BC34A; padding: 25px; border-radius: 8px; margin: 25px 0;"&gt;
+                    &lt;p style="margin: 0; font-size: 18px; color: #2c3e50; font-weight: 500;"&gt;
+                        🎉 Congratulations — you and your team are about to embark on the &lt;strong&gt;iN-Clue Journey&lt;/strong&gt;.
                     &lt;/p&gt;
+                &lt;/div&gt;
 
-                    &lt;p&gt;
-                        As a manager, it's helpful to have some context about why this journey was created and what to expect — without giving too much away so you can enjoy it just like the rest of your team.
-                    &lt;/p&gt;
+                &lt;p style="margin-bottom: 20px;"&gt;
+                    As a manager, it's helpful to have some context about why this journey was created and what to expect — without giving too much away so you can enjoy it just like the rest of your team.
+                &lt;/p&gt;
 
-                    &lt;hr style="border: none; border-top: 1px solid #ccc; margin: 30px 0;" /&gt;
+                &lt;hr style="border: none; height: 2px; background: linear-gradient(90deg, transparent, #8BC34A, transparent); margin: 35px 0;" /&gt;
 
-                    &lt;p&gt;
+                &lt;div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #e9ecef;"&gt;
+                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt;🛡️ Psychological Safety: A Shared Responsibility&lt;/h3&gt;
+                    &lt;p style="margin: 0 0 15px 0;"&gt;
                         Creating a safe and healthy work environment isn't just the manager's responsibility.
-                        Just like physical safety, <strong>psychological safety is a shared responsibility</strong> — we all play a role in creating it.
+                        Just like physical safety, &lt;strong style="color: #8BC34A;"&gt;psychological safety is a shared responsibility&lt;/strong&gt; — we all play a role in creating it.
                     &lt;/p&gt;
-
-                    &lt;p&gt;
-                        The difference? While physical safety often relies on common rules for everyone, <em>psychological safety is more nuanced</em>. It's shaped by our individual experiences and needs.
+                    &lt;p style="margin: 0;"&gt;
+                        The difference? While physical safety often relies on common rules for everyone, &lt;em&gt;psychological safety is more nuanced&lt;/em&gt;. It's shaped by our individual experiences and needs.
                     &lt;/p&gt;
+                &lt;/div&gt;
 
-                    &lt;p&gt;
-                        As a manager, it's not always easy to focus on this, make time for it, or find the right language that is respectful without feeling intrusive.
-                    &lt;/p&gt;
+                &lt;p style="margin-bottom: 20px;"&gt;
+                    As a manager, it's not always easy to focus on this, make time for it, or find the right language that is respectful without feeling intrusive.
+                &lt;/p&gt;
 
-                    &lt;p&gt;
-                        <strong>That's why we created the iN-Clue Journey.</strong>
-                    &lt;/p&gt;
+                &lt;div style="text-align: center; margin: 30px 0;"&gt;
+                    &lt;div style="background: linear-gradient(135deg, #2c3e50, #34495e); color: white; padding: 20px; border-radius: 12px; display: inline-block;"&gt;
+                        &lt;p style="margin: 0; font-size: 18px; font-weight: 500;"&gt;✨ &lt;strong&gt;That's why we created the iN-Clue Journey.&lt;/strong&gt;&lt;/p&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
 
-                    &lt;p&gt;
+                &lt;div style="background: linear-gradient(135deg, #ffffff, #f8f9fa); padding: 25px; border-radius: 12px; margin: 25px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.05);"&gt;
+                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt;🤝 What to Expect&lt;/h3&gt;
+                    &lt;p style="margin: 0 0 15px 0;"&gt;
                         The experience helps people connect with themselves and with each other — at their own pace.
                         The first session offers an opportunity to move beyond roles and assumptions, and to meet each other on a deeper human level.
                     &lt;/p&gt;
-
-                    &lt;p&gt;
-                        After that, your team will take part in <strong>6 short follow-up sessions</strong> (each lasting no more than 35 minutes), where you'll explore six aspects of psychological safety — which you experienced during the first session — and reflect on how your team is doing.
+                    &lt;p style="margin: 0;"&gt;
+                        After that, your team will take part in &lt;strong style="color: #8BC34A;"&gt;6 short follow-up sessions&lt;/strong&gt; (each lasting no more than 35 minutes), where you'll explore six aspects of psychological safety and reflect on how your team is doing.
                     &lt;/p&gt;
+                &lt;/div&gt;
 
-                    &lt;p&gt;
-                        These moments help build shared language and awareness that can support stronger collaboration.
+                &lt;p style="margin-bottom: 20px;"&gt;
+                    These moments help build shared language and awareness that can support stronger collaboration.
+                &lt;/p&gt;
+
+                &lt;div style="background: linear-gradient(135deg, #8BC34A15, #7CB34215); padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;"&gt;
+                    &lt;p style="margin: 0 0 10px 0; color: #2c3e50;"&gt;👨‍🏫 &lt;strong&gt;Your Certified Facilitator&lt;/strong&gt;&lt;/p&gt;
+                    &lt;p style="margin: 0; font-size: 20px; color: #8BC34A; font-weight: 600;"&gt;&lt;t t-esc="object.facilitator_id.name"/&gt;&lt;/p&gt;
+                &lt;/div&gt;
+
+                &lt;div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #3498db;"&gt;
+                    &lt;p style="margin: 0; color: #2c3e50;"&gt;
+                        📊 To track the impact of the journey, your team will be invited to complete a short 6-question survey before and after the first session, and again after the final follow-up session.
                     &lt;/p&gt;
+                &lt;/div&gt;
 
-                    &lt;p&gt;
-                        The entire process will be facilitated by your certified internal facilitator:
-                        &lt;strong&gt;&lt;t t-esc="object.facilitator_id.name"/&gt;&lt;/strong&gt;.
-                    &lt;/p&gt;
-
-                    &lt;p&gt;
-                        To track the impact of the journey, your team will be invited to complete a short 6-question survey before and after the first session, and again after the final follow-up session.
-                    &lt;/p&gt;
-
-                    &lt;p style="margin-top: 30px;"&gt;
+                &lt;div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e9ecef;"&gt;
+                    &lt;p style="margin-bottom: 20px; color: #2c3e50; font-size: 17px;"&gt;
                         Wishing you a meaningful and rewarding journey,
                     &lt;/p&gt;
 
-                    &lt;p&gt;Warm regards,&lt;/p&gt;
+                    &lt;p style="margin-bottom: 5px; color: #2c3e50;"&gt;Warm regards,&lt;/p&gt;
 
-                    &lt;p&gt;&lt;strong&gt;Alan De Bruyne&lt;/strong&gt;&lt;br/&gt;Creator of the iN-Clue Journey&lt;/p&gt;
+                    &lt;div style="margin: 20px 0;"&gt;
+                        &lt;p style="margin: 0; font-size: 18px; font-weight: 600; color: #2c3e50;"&gt;Alan De Bruyne&lt;/p&gt;
+                        &lt;p style="margin: 5px 0 0 0; color: #8BC34A; font-style: italic;"&gt;Creator of the iN-Clue Journey&lt;/p&gt;
+                    &lt;/div&gt;
 
-                    &lt;p style="font-size: 14px; margin-top: 20px;"&gt;&lt;em&gt;P.S. Let's connect on LinkedIn&lt;/em&gt;&lt;/p&gt;
+                    &lt;div style="margin-top: 25px; padding: 15px; background: linear-gradient(135deg, #8BC34A15, #7CB34215); border-radius: 8px; text-align: center;"&gt;
+                        &lt;p style="margin: 0; font-size: 14px; color: #666;"&gt;💼 &lt;em&gt;Let's connect on LinkedIn&lt;/em&gt;&lt;/p&gt;
+                    &lt;/div&gt;
                 &lt;/div&gt;
-            </field>
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- Footer --&gt;
+        &lt;div style="background: #2c3e50; padding: 20px; text-align: center;"&gt;
+            &lt;p style="margin: 0; color: #8BC34A; font-size: 12px; letter-spacing: 1px;"&gt;A CLUE FOR INCLUSION&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</field>
         </record>
     </data>
 </odoo>
