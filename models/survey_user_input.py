@@ -2,12 +2,17 @@ from odoo import models, fields, api
 import logging
 import json
 import tempfile
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, cm
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.graphics.shapes import Drawing, Rect, Circle, Line
+from reportlab.graphics import renderPDF
 import os
+import tempfile
 
 _logger = logging.getLogger(__name__)
 
@@ -122,49 +127,129 @@ class SurveyUserInput(models.Model):
         try:
             # Create temporary file
             temp_dir = tempfile.gettempdir()
-            filename = f"completion_report_{self.completion_journey_id.cohort}_{self.id}.pdf"
+            filename = f"inclue_completion_report_{self.completion_journey_id.cohort}_{self.id}.pdf"
             pdf_path = os.path.join(temp_dir, filename)
             
             # Create PDF
-            doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+            doc = SimpleDocTemplate(
+                pdf_path, 
+                pagesize=A4,
+                rightMargin=2*cm,
+                leftMargin=2*cm,
+                topMargin=3*cm,
+                bottomMargin=2*cm
+            )
+            
             styles = getSampleStyleSheet()
             story = []
             
-            # Title
-            title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=18,
-                spaceAfter=30,
-                textColor=colors.HexColor('#2c3e50')
-            )
-            story.append(Paragraph("iN-Clue Journey Completion Report", title_style))
+            # ============================================================================
+            # ENHANCED HEADER WITH BRANDING
+            # ============================================================================
             
-            # Journey Info
+            # Create branded header with geometric elements
+            header_style = ParagraphStyle(
+                'BrandedHeader',
+                parent=styles['Heading1'],
+                fontSize=24,
+                fontName='Helvetica-Bold',
+                textColor=colors.HexColor('#2c3e50'),
+                alignment=TA_CENTER,
+                spaceAfter=10
+            )
+            story.append(Paragraph("iN·Clue", header_style))
+            
+            # Subtitle with accent color
+            subtitle_style = ParagraphStyle(
+                'Subtitle',
+                parent=styles['Normal'],
+                fontSize=14,
+                fontName='Helvetica',
+                textColor=colors.HexColor('#8BC34A'),
+                alignment=TA_CENTER,
+                spaceAfter=30
+            )
+            story.append(Paragraph("A CLUE FOR INCLUSION", subtitle_style))
+            
+            title_style = ParagraphStyle(
+                'ModernTitle',
+                parent=styles['Heading1'],
+                fontSize=20,
+                fontName='Helvetica',
+                textColor=colors.HexColor('#34495e'),
+                alignment=TA_CENTER,
+                spaceAfter=40,
+                borderWidth=2,
+                borderColor=colors.HexColor('#8BC34A'),
+                borderPadding=15,
+                backColor=colors.HexColor('#f8f9fa')
+            )
+            story.append(Paragraph("Journey Completion Report", title_style))
+            
+            # ============================================================================
+            # JOURNEY INFO TABLE
+            # ============================================================================
+            
             journey = self.completion_journey_id
             if journey:
+                # Create more detailed journey info
                 info_data = [
-                    ['Team/Cohort:', journey.cohort or 'N/A'],
-                    ['Team Leader:', journey.team_leader or 'N/A'],
-                    ['Completion Date:', self.create_date.strftime('%B %d, %Y') if self.create_date else 'N/A'],
-                    ['Facilitator:', journey.facilitator_id.name if journey.facilitator_id else 'N/A'],
+                    ['🎯 Team', journey.cohort or 'N/A'],
+                    ['👤 Team Leader', journey.team_leader or 'N/A'],
+                    ['✅ Completion Date', self.create_date.strftime('%B %d, %Y') if self.create_date else 'N/A'],
+                    ['🎓 Facilitator', journey.facilitator_id.name if journey.facilitator_id else 'N/A'],
+                    ['🏢 Company', journey.invoice_info_id.company_name if journey.invoice_info_id else 'N/A'],
+                    ['🌍 Country', journey.country_id.name if journey.country_id else 'N/A'],
                 ]
                 
-                info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+                info_table = Table(info_data, colWidths=[3*cm, 12*cm])
                 info_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#f8f9fa')),
-                    ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
-                    ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                    # Header styling
+                    ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#34495e')),
+                    ('TEXTCOLOR', (0,0), (0,-1), colors.white),
                     ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0,0), (-1,-1), 10),
-                    ('GRID', (0,0), (-1,-1), 1, colors.HexColor('#dee2e6'))
+                    ('FONTSIZE', (0,0), (0,-1), 11),
+                    
+                    # Data styling
+                    ('BACKGROUND', (1,0), (1,-1), colors.HexColor('#ecf0f1')),
+                    ('TEXTCOLOR', (1,0), (1,-1), colors.HexColor('#2c3e50')),
+                    ('FONTNAME', (1,0), (1,-1), 'Helvetica'),
+                    ('FONTSIZE', (1,0), (1,-1), 11),
+                    
+                    # Grid and alignment
+                    ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                    ('GRID', (0,0), (-1,-1), 1, colors.HexColor('#bdc3c7')),
+                    ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, colors.HexColor('#f8f9fa')]),
+                    
+                    # Padding
+                    ('LEFTPADDING', (0,0), (-1,-1), 12),
+                    ('RIGHTPADDING', (0,0), (-1,-1), 12),
+                    ('TOPPADDING', (0,0), (-1,-1), 8),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), 8),
                 ]))
                 story.append(info_table)
-                story.append(Spacer(1, 20))
+                story.append(Spacer(1, 30))
             
-            # Survey Answers
-            story.append(Paragraph("Survey Responses", styles['Heading2']))
-            story.append(Spacer(1, 12))
+            # ============================================================================
+            # SURVEY RESPONSES SECTION
+            # ============================================================================
+            
+            # Section header with accent line
+            response_header_style = ParagraphStyle(
+                'ResponseHeader',
+                parent=styles['Heading2'],
+                fontSize=18,
+                fontName='Helvetica-Bold',
+                textColor=colors.HexColor('#2c3e50'),
+                spaceBefore=20,
+                spaceAfter=20,
+                borderWidth=0,
+                borderPadding=10,
+                backColor=colors.HexColor('#ecf0f1'),
+                leftIndent=15
+            )
+            story.append(Paragraph("📝 Survey Responses", response_header_style))
             
             # Sort answers by sequence
             sorted_answers = sorted(answers.values(), key=lambda x: x['sequence'])
@@ -172,28 +257,68 @@ class SurveyUserInput(models.Model):
             for i, answer_data in enumerate(sorted_answers, 1):
                 # Question
                 question_style = ParagraphStyle(
-                    'Question',
+                    'ModernQuestion',
                     parent=styles['Normal'],
-                    fontSize=12,
+                    fontSize=13,
                     fontName='Helvetica-Bold',
-                    spaceBefore=10,
-                    spaceAfter=5
+                    textColor=colors.HexColor('#2c3e50'),
+                    spaceBefore=15,
+                    spaceAfter=8,
+                    leftIndent=10,
+                    borderWidth=1,
+                    borderColor=colors.HexColor('#8BC34A'),
+                    borderPadding=10,
+                    backColor=colors.HexColor('#e8f5e8')
                 )
                 story.append(Paragraph(f"Question {i}: {answer_data['question']}", question_style))
                 
                 # Answer
                 answer_style = ParagraphStyle(
-                    'Answer',
+                    'ModernAnswer',
                     parent=styles['Normal'],
-                    fontSize=11,
-                    leftIndent=20,
-                    spaceAfter=15,
-                    borderColor=colors.HexColor('#e9ecef'),
+                    fontSize=12,
+                    fontName='Helvetica',
+                    textColor=colors.HexColor('#34495e'),
+                    leftIndent=25,
+                    rightIndent=25,
+                    spaceAfter=20,
                     borderWidth=1,
-                    borderPadding=10,
-                    backColor=colors.HexColor('#f8f9fa')
+                    borderColor=colors.HexColor('#d5dbdb'),
+                    borderPadding=15,
+                    backColor=colors.white,
+                    leading=16
                 )
-                story.append(Paragraph(answer_data['answer'], answer_style))
+                story.append(Paragraph(f'"{answer_data["answer"]}"', answer_style))
+            
+            # ============================================================================
+            # FOOTER SECTION
+            # ============================================================================
+            
+            story.append(Spacer(1, 40))
+            
+            # Thank you message
+            footer_style = ParagraphStyle(
+                'Footer',
+                parent=styles['Normal'],
+                fontSize=11,
+                fontName='Helvetica-Oblique',
+                textColor=colors.HexColor('#7f8c8d'),
+                alignment=TA_CENTER,
+                spaceBefore=30
+            )
+            story.append(Paragraph("Thank you for completing your iN-Clue Journey!", footer_style))
+            
+            # Contact info
+            contact_style = ParagraphStyle(
+                'Contact',
+                parent=styles['Normal'],
+                fontSize=9,
+                fontName='Helvetica',
+                textColor=colors.HexColor('#95a5a6'),
+                alignment=TA_CENTER,
+                spaceBefore=10
+            )
+            story.append(Paragraph("For questions about this report, contact your facilitator or the iN-Clue team.", contact_style))
             
             # Build PDF
             doc.build(story)
@@ -204,7 +329,7 @@ class SurveyUserInput(models.Model):
         except Exception as e:
             _logger.error("Error generating PDF: %s", str(e))
             return None
-        
+
     def _send_pdf_to_team_lead(self, pdf_path, answers):
         """Send PDF to team leader"""
         self.ensure_one()
@@ -215,40 +340,145 @@ class SurveyUserInput(models.Model):
             return
         
         try:
-            # Create email template
+            # ============================================================================
+            # HTML EMAIL TEMPLATE
+            # ============================================================================
+            
             template_body = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                <h2 style="color: #2c3e50;">iN-Clue Journey Completion Report</h2>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>iN-Clue Journey Completion</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: 'Helvetica', Arial, sans-serif; background-color: #f8f9fa;">
                 
-                <p>Dear {journey.team_leader},</p>
-                
-                <p>Congratulations! Your team <strong>{journey.cohort}</strong> has successfully completed their iN-Clue Journey.</p>
-                
-                <p>Please find attached the completion report with your team's final reflections.</p>
-                
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">Journey Summary:</h3>
-                    <ul>
-                        <li><strong>Team/Cohort:</strong> {journey.cohort}</li>
-                        <li><strong>Facilitator:</strong> {journey.facilitator_id.name if journey.facilitator_id else 'N/A'}</li>
-                        <li><strong>Completion Date:</strong> {self.create_date.strftime('%B %d, %Y') if self.create_date else 'N/A'}</li>
-                    </ul>
+                <!-- Main Container -->
+                <div style="max-width: 600px; margin: 0 auto; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header with Branding -->
+                    <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); padding: 40px 30px; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 2px;">
+                            iN·Clue
+                        </h1>
+                        <p style="color: #8BC34A; margin: 10px 0 0 0; font-size: 14px; font-weight: 500; letter-spacing: 1px;">
+                            A CLUE FOR INCLUSION
+                        </p>
+                    </div>
+                    
+                    <!-- Content Area -->
+                    <div style="padding: 40px 30px;">
+                        
+                        <!-- Congratulations Section -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <div style="width: 60px; height: 60px; background-color: #8BC34A; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                🎉
+                            </div>
+                            <h2 style="color: #2c3e50; margin: 0; font-size: 24px; font-weight: 600;">
+                                Journey Complete!
+                            </h2>
+                            <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 16px;">
+                                Your team has successfully completed their iN-Clue Journey
+                            </p>
+                        </div>
+                        
+                        <!-- Personal Message -->
+                        <div style="background-color: #f8f9fa; padding: 25px; border-radius: 8px; border-left: 4px solid #8BC34A; margin-bottom: 30px;">
+                            <p style="color: #2c3e50; margin: 0; font-size: 16px; line-height: 1.5;">
+                                Dear <strong>{journey.team_leader}</strong>,
+                            </p>
+                            <p style="color: #34495e; margin: 15px 0 0 0; font-size: 15px; line-height: 1.6;">
+                                Congratulations! Your team <strong style="color: #8BC34A;">{journey.cohort}</strong> 
+                                has successfully completed their iN-Clue Journey. This is a significant milestone 
+                                in your team's development and inclusion journey.
+                            </p>
+                        </div>
+                        
+                        <!-- Journey Summary Card -->
+                        <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
+                            <div style="background-color: #34495e; color: white; padding: 15px 20px;">
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">📊 Journey Summary</h3>
+                            </div>
+                            <div style="padding: 20px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #7f8c8d; font-size: 14px; width: 40%;">Team:</td>
+                                        <td style="padding: 8px 0; color: #2c3e50; font-size: 14px; font-weight: 600;">{journey.cohort}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #7f8c8d; font-size: 14px;">Facilitator:</td>
+                                        <td style="padding: 8px 0; color: #2c3e50; font-size: 14px; font-weight: 600;">{journey.facilitator_id.name if journey.facilitator_id else 'N/A'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #7f8c8d; font-size: 14px;">Completion Date:</td>
+                                        <td style="padding: 8px 0; color: #2c3e50; font-size: 14px; font-weight: 600;">{self.create_date.strftime('%B %d, %Y') if self.create_date else 'N/A'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #7f8c8d; font-size: 14px;">Company:</td>
+                                        <td style="padding: 8px 0; color: #2c3e50; font-size: 14px; font-weight: 600;">{journey.invoice_info_id.company_name if journey.invoice_info_id else 'N/A'}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Call to Action -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <p style="color: #34495e; margin: 0 0 20px 0; font-size: 15px;">
+                                📎 Please find attached your team's completion report with final reflections
+                            </p>
+                            <div style="background: linear-gradient(45deg, #8BC34A, #9CCC65); padding: 12px 30px; border-radius: 25px; display: inline-block;">
+                                <span style="color: white; font-size: 14px; font-weight: 600;">
+                                    ✨ Completion Report Attached
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Next Steps -->
+                        <div style="background: linear-gradient(135deg, #ecf0f1, #f8f9fa); padding: 25px; border-radius: 8px; margin-bottom: 30px;">
+                            <h4 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 16px;">🚀 What's Next?</h4>
+                            <ul style="color: #34495e; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6;">
+                                <li>Review your team's completion responses</li>
+                                <li>Share insights with your team members</li>
+                                <li>Consider how to implement the learnings</li>
+                                <li>Celebrate this achievement with your team!</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Thank You -->
+                        <div style="text-align: center;">
+                            <p style="color: #34495e; margin: 0; font-size: 15px; line-height: 1.6;">
+                                Thank you for participating in the iN-Clue Journey program.<br>
+                                Your commitment to inclusion makes a difference.
+                            </p>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="background-color: #2c3e50; padding: 25px 30px; text-align: center;">
+                        <p style="color: white; margin: 0; font-size: 14px; font-weight: 600;">
+                            The iN-Clue Team
+                        </p>
+                        <p style="color: #8BC34A; margin: 10px 0 0 0; font-size: 12px;">
+                            Empowering inclusion, one journey at a time
+                        </p>
+                    </div>
+                    
                 </div>
                 
-                <p>Thank you for participating in the iN-Clue Journey program.</p>
-                
-                <p>Best regards,<br/>The iN-Clue Team</p>
-            </div>
+            </body>
+            </html>
             """
             
             # Send email with attachment
             mail_values = {
-                'subject': f'iN-Clue Journey Completion Report - {journey.cohort}',
+                'subject': f'🎉 iN-Clue Journey Complete - {journey.cohort}',
                 'body_html': template_body,
                 'email_to': journey.team_leader_email,
                 'email_from': self.env.company.email or 'noreply@inclue.com',
                 'attachment_ids': [(0, 0, {
-                    'name': f'Completion_Report_{journey.cohort}.pdf',
+                    'name': f'iN-Clue_Completion_Report_{journey.cohort}.pdf',
                     'datas': self._encode_pdf_file(pdf_path),
                     'res_model': 'survey.user_input',
                     'res_id': self.id,
@@ -273,3 +503,23 @@ class SurveyUserInput(models.Model):
         except Exception as e:
             _logger.error("Error encoding PDF file: %s", str(e))
             return False
+
+    # ============================================================================
+    # COMPANY LOGO TO PDF
+    # ============================================================================
+
+    def _add_logo_to_pdf(self, story):
+        """Add company logo to PDF if available"""
+        try:
+            logo_path = 'https://diversito.be/wp-content/uploads/2024/04/LOGO_INCLUE_puzzel_RGB.jpg.webp'  # Update this path
+            
+            if os.path.exists(logo_path):
+                logo = Image(logo_path, width=3*inch, height=1*inch)
+                logo.hAlign = 'CENTER'
+                story.insert(0, logo)
+                story.insert(1, Spacer(1, 20))
+                
+        except Exception as e:
+            _logger.warning("Could not add logo to PDF: %s", str(e))
+        
+        return story
