@@ -33,6 +33,7 @@ class ResPartner(models.Model):
         help="Rank of this partner as a customer"
     )
     is_facilitator = fields.Boolean('Is Facilitator', default=False)
+    is_country_manager = fields.Boolean('Is Country Manager', default=False)
     facilitated_event_ids = fields.One2many('event.event', 'facilitator_id', string='Facilitated Events')
     facilitation_count = fields.Integer('Facilitation Count', compute='_compute_facilitation_stats')
     

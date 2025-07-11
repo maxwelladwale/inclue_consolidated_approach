@@ -24,6 +24,7 @@
         'product',
         'account',
         'sale',
+        'hr',
     ],
     'data': [
         # Security
@@ -33,15 +34,18 @@
         # Data
         'data/card_products.xml',
         'data/pricelists.xml',
-        'data/sequences.xml',
+        # 'data/sequences.xml',
         'data/cron_jobs.xml',
         'data/email_template_pre_session.xml',
+        # 'data/email_template_team_lead_reminder.xml',
+        # 'data/reset_password_template.xml',
         # 'data/email_templates.xml',
         
         # Views
         'views/inclue_survey_config_views.xml',
         'views/res_partner_views.xml',
-        'views/inclue_facilitator_order_views.xml',
+        'views/res_user_views.xml',
+        # 'views/inclue_facilitator_order_views.xml',
         'views/inclue_invoice_info_views.xml',
         'views/menu_items.xml',
         # 'views/inclue_event_views.xml',

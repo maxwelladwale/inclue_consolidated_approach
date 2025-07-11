@@ -6,6 +6,11 @@ _logger = logging.getLogger(__name__)
 class SurveyUserInput(models.Model):
     _inherit = 'survey.user_input'
     
+    cohort_id = fields.Many2one(
+        'event.event',
+        string='Cohort',
+        help="The cohort this answer belongs to"
+    )
     completion_journey_id = fields.Many2one(
         'event.event',
         string='Completion Journey',

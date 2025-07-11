@@ -9,6 +9,10 @@ _logger = logging.getLogger(__name__)
 
 class InclueEvent(models.Model):
     _inherit = 'event.event'
+# ADDED
+    team_lead_email_sent = fields.Boolean(default=False)
+    team_lead_email_sent_date = fields.Datetime()
+    resolved_team_leader_name = fields.Char(compute='_compute_team_leader', store=False)
     
     is_inclue_event = fields.Boolean('iN-Clue Event', default=False)
 
@@ -146,8 +150,14 @@ class InclueEvent(models.Model):
     invoice_id = fields.Many2one('account.move', string='Generated Invoice', readonly=True)
     invoice_created = fields.Boolean('Invoice Created', default=False, readonly=True)
 
-    def unlink(self):
-        raise UserError("Events cannot be deleted. Please archive instead.")
+    # def unlink(self):
+    #     raise UserError("Events cannot be deleted. Please archive instead.")
+
+    # ADDED
+    @api.depends('team_leader', 'parent_kickoff_id.team_leader')
+    def _compute_team_leader(self):
+        for event in self:
+            event.resolved_team_leader_name = event.team_leader or (event.parent_kickoff_id.team_leader if event.parent_kickoff_id else False)
 
     @api.model
     def create(self, vals):
@@ -173,53 +183,167 @@ class InclueEvent(models.Model):
         return event
     
     def _create_event_invoice(self):
-        """Create, post, and send invoice for the iN-Clue event"""
+        """Create an invoice for the iN-Clue event - IMPROVED VERSION"""
         self.ensure_one()
-
+        
         if self.invoice_created:
             _logger.warning("Invoice already exists for event ID %s", self.id)
-            return
-
+            return self.invoice_id
+        
         if not self.facilitator_id:
-            _logger.warning("Cannot create invoice for event ID %s: No facilitator assigned", self.id)
-            return
-
-        invoice_vals = self._prepare_invoice_vals()
-
+            raise UserError("Cannot create invoice: No facilitator assigned to event.")
+        
+        # Get the product for this session type
+        product = self._get_session_product()
+        if not product:
+            raise UserError(f"No product configured for session type: {self.session_type}")
+        
         try:
+            # Create invoice with lines in one operation (IMPROVED)
+            invoice_vals = self._prepare_invoice_vals_improved()
+            invoice_vals['invoice_line_ids'] = [(0, 0, self._prepare_invoice_line_improved(product))]
+            
             invoice = self.env['account.move'].create(invoice_vals)
-
-            invoice_lines = self._prepare_invoice_lines()
-            for line_vals in invoice_lines:
-                line_vals['move_id'] = invoice.id
-                self.env['account.move.line'].create(line_vals)
-
-            # Post the invoice (i.e., confirm it)
-            invoice.action_post()
-
-            # Optionally attach message with invoice email
+            
+            # Post the invoice automatically
+            if invoice.state == 'draft':
+                invoice.action_post()
+            
+            # Send invoice via email if email configured
             if self.invoice_info_id and self.invoice_info_id.email:
-                invoice.message_post(
-                    body=f"Invoice should be sent to: {self.invoice_info_id.email}",
-                    subject="Invoice Email Information"
-                )
-
-            # Send invoice via email
-            invoice.action_invoice_sent()
-
-            # Update event
+                self._send_invoice_email(invoice)
+                _logger.info("Invoice email sent to %s for event ID %s", self.invoice_info_id.email, self.id)
+            
+            # Update event record
             self.write({
                 'invoice_id': invoice.id,
                 'invoice_created': True
             })
-
-            _logger.info("Successfully created and sent invoice ID %s for event ID %s", invoice.id, self.id)
+            
+            _logger.info("Successfully created invoice ID %s for event ID %s", invoice.id, self.id)
             return invoice
-
+            
         except Exception as e:
             _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
-            raise
+            raise UserError(f"Failed to create invoice: {str(e)}")
 
+    def _prepare_invoice_vals_improved(self):
+        """Prepare invoice header values - IMPROVED"""
+        partner = self._get_invoice_partner()
+        
+        return {
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'invoice_date': fields.Date.today(),
+            'company_id': self.env.company.id,  # ✅ FIXED: Use current company
+            'currency_id': self.env.company.currency_id.id,
+            'ref': self._get_invoice_reference(),
+            'narration': self._get_invoice_narration(),
+            'invoice_origin': f"Event: {self.name}",
+        }
+
+    def _prepare_invoice_line_improved(self, product):
+        """Prepare single invoice line - IMPROVED"""
+        return {
+            'product_id': product.id,
+            'name': f"{product.name} - {self.name}",  # More descriptive
+            'quantity': 1,
+            'price_unit': product.lst_price,
+            'product_uom_id': product.uom_id.id,
+            'account_id': product.property_account_income_id.id or self._get_income_account().id,
+            'tax_ids': [(6, 0, product.taxes_id.ids)],  # ✅ ADDED: Include taxes
+        }
+
+    def _get_session_product(self):
+        """Get product for this session type with proper validation"""
+        # First try to find session-specific product
+        product = self.env['product.product'].search([
+            ('product_tmpl_id.is_inclue_session', '=', True),
+            # ('product_tmpl_id.session_type', '=', self.session_type),
+            ('active', '=', True)
+        ], limit=1)
+        
+        if not product:
+            # Fallback to generic session product
+            product = self.env['product.product'].search([
+                ('product_tmpl_id.is_inclue_session', '=', True),
+                ('active', '=', True)
+            ], limit=1)
+        
+        return product
+
+    def _get_invoice_partner(self):
+        """Get the correct partner for invoicing"""
+        if self.invoice_info_id and self.invoice_info_id.partner_id:
+            return self.invoice_info_id.partner_id
+        return self.facilitator_id
+
+    def _get_invoice_reference(self):
+        """Generate invoice reference"""
+        ref_parts = [f"Event-{self.id}"]
+        if self.cohort:
+            ref_parts.append(f"Cohort-{self.cohort}")
+        if self.invoice_info_id and self.invoice_info_id.po_number:
+            ref_parts.append(f"PO-{self.invoice_info_id.po_number}")
+        return " | ".join(ref_parts)
+
+    def _get_invoice_narration(self):
+        """Generate invoice description"""
+        narration = f'Invoice for iN-Clue Event: {self.name}\nSession Type: {dict(self._fields["session_type"].selection).get(self.session_type)}'
+        
+        # Add invoice info details if available
+        if self.invoice_info_id:
+            invoice_info = self.invoice_info_id
+            narration += f'\n\nBilling Details:'
+            if invoice_info.company_name:
+                narration += f'\nCompany: {invoice_info.company_name}'
+            if invoice_info.contact_person:
+                narration += f'\nContact: {invoice_info.contact_person}'
+            if invoice_info.po_number:
+                narration += f'\nPO Number: {invoice_info.po_number}'
+            if invoice_info.address:
+                narration += f'\nAddress: {invoice_info.address}'
+        
+        return narration
+
+    def _send_invoice_email(self, invoice):
+        """Send invoice via email using Odoo's system"""
+        try:
+            # Use Odoo's built-in email template
+            template = self.env.ref('account.email_template_edi_invoice', False)
+            if template:
+                # Override email recipient
+                template.send_mail(
+                    invoice.id, 
+                    force_send=True,
+                    email_values={'email_to': self.invoice_info_id.email}
+                )
+            else:
+                # Fallback to action_invoice_sent
+                invoice.action_invoice_sent()
+            _logger.info("Invoice email sent for invoice ID %s", invoice.id)
+        except Exception as e:
+            _logger.warning("Failed to send invoice email for ID %s: %s", invoice.id, str(e))
+
+    def _get_income_account(self):
+        """Get income account with better fallback logic"""
+        company = self.env.company
+        
+        # Try to get from company's default income account
+        if hasattr(company, 'default_income_account_id') and company.default_income_account_id:
+            return company.default_income_account_id
+        
+        # Fallback to searching for income account
+        income_account = self.env['account.account'].search([
+            ('account_type', '=', 'income'),
+            ('company_id', '=', company.id),
+            ('deprecated', '=', False)
+        ], limit=1)
+        
+        if not income_account:
+            raise UserError("No income account found. Please configure accounting properly.")
+        
+        return income_account
     def _generate_journey_code(self):
         """Generate unique 8-character journey code: 4 letters + 4 numbers"""
         max_attempts = 100
@@ -397,152 +521,178 @@ class InclueEvent(models.Model):
         
         return result
     
-    def _create_event_invoice(self):
-        """Create an invoice for the iN-Clue event"""
-        self.ensure_one()
+    # def _create_event_invoice(self):
+    #     """Create an invoice for the iN-Clue event"""
+    #     self.ensure_one()
         
-        if self.invoice_created:
-            _logger.warning("Invoice already exists for event ID %s", self.id)
-            return
+    #     if self.invoice_created:
+    #         _logger.warning("Invoice already exists for event ID %s", self.id)
+    #         return
         
-        if not self.facilitator_id:
-            _logger.warning("Cannot create invoice for event ID %s: No facilitator assigned", self.id)
-            return
+    #     if not self.facilitator_id:
+    #         _logger.warning("Cannot create invoice for event ID %s: No facilitator assigned", self.id)
+    #         return
         
-        invoice_vals = self._prepare_invoice_vals()
+    #     invoice_vals = self._prepare_invoice_vals()
         
-        try:
-            invoice = self.env['account.move'].create(invoice_vals)
+    #     try:
+    #         invoice = self.env['account.move'].create(invoice_vals)
             
-            invoice_lines = self._prepare_invoice_lines()
-            for line_vals in invoice_lines:
-                line_vals['move_id'] = invoice.id
-                self.env['account.move.line'].create(line_vals)
+    #         invoice_lines = self._prepare_invoice_lines()
+    #         for line_vals in invoice_lines:
+    #             line_vals['move_id'] = invoice.id
+    #             self.env['account.move.line'].create(line_vals)
             
-            if self.invoice_info_id and self.invoice_info_id.email:
-                invoice.message_post(
-                    body=f"Invoice should be sent to: {self.invoice_info_id.email}",
-                    subject="Invoice Email Information"
-                )
+    #         if self.invoice_info_id and self.invoice_info_id.email:
+    #             invoice.message_post(
+    #                 body=f"Invoice should be sent to: {self.invoice_info_id.email}",
+    #                 subject="Invoice Email Information"
+    #             )
             
-            self.write({
-                'invoice_id': invoice.id,
-                'invoice_created': True
-            })
+    #         self.write({
+    #             'invoice_id': invoice.id,
+    #             'invoice_created': True
+    #         })
             
-            _logger.info("Successfully created invoice ID %s for event ID %s", invoice.id, self.id)
-            return invoice
+    #         _logger.info("Successfully created invoice ID %s for event ID %s", invoice.id, self.id)
+    #         return invoice
             
-        except Exception as e:
-            _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
-            raise
+    #     except Exception as e:
+    #         _logger.error("Error creating invoice for event ID %s: %s", self.id, str(e))
+    #         raise
     
-    def _prepare_invoice_vals(self):
-        """Prepare invoice header values"""
-        partner = self.facilitator_id
+    # def _prepare_invoice_vals(self):
+    #     """Prepare invoice header values"""
+    #     partner = self.facilitator_id
         
-        narration = f'Invoice for iN-Clue Event: {self.name}\nSession Type: {dict(self._fields["session_type"].selection).get(self.session_type)}'
+    #     narration = f'Invoice for iN-Clue Event: {self.name}\nSession Type: {dict(self._fields["session_type"].selection).get(self.session_type)}'
         
-        # Add invoice info details to narration if available
-        if self.invoice_info_id:
-            invoice_info = self.invoice_info_id
-            narration += f'\n\nBilling Details:'
-            if invoice_info.company_name:
-                narration += f'\nCompany: {invoice_info.company_name}'
-            if invoice_info.contact_person:
-                narration += f'\nContact: {invoice_info.contact_person}'
-            if invoice_info.po_number:
-                narration += f'\nPO Number: {invoice_info.po_number}'
-            if invoice_info.address:
-                narration += f'\nAddress: {invoice_info.address}'
+    #     # Add invoice info details to narration if available
+    #     if self.invoice_info_id:
+    #         invoice_info = self.invoice_info_id
+    #         narration += f'\n\nBilling Details:'
+    #         if invoice_info.company_name:
+    #             narration += f'\nCompany: {invoice_info.company_name}'
+    #         if invoice_info.contact_person:
+    #             narration += f'\nContact: {invoice_info.contact_person}'
+    #         if invoice_info.po_number:
+    #             narration += f'\nPO Number: {invoice_info.po_number}'
+    #         if invoice_info.address:
+    #             narration += f'\nAddress: {invoice_info.address}'
         
-        invoice_vals = {
-            'move_type': 'out_invoice',
-            'partner_id': partner.id,
-            'invoice_date': fields.Date.today(),
-            'ref': f'Event: {self.name}' + (f' - PO: {self.invoice_info_id.po_number}' if self.invoice_info_id and self.invoice_info_id.po_number else ''),
-            'narration': narration,
-            'company_id': self.env.company.id,
-        }
+    #     invoice_vals = {
+    #         'move_type': 'out_invoice',
+    #         'partner_id': partner.id,
+    #         'invoice_date': fields.Date.today(),
+    #         'ref': f'Event: {self.name}' + (f' - PO: {self.invoice_info_id.po_number}' if self.invoice_info_id and self.invoice_info_id.po_number else ''),
+    #         'narration': narration,
+    #         'company_id': 1,
+    #     }
         
-        # Override partner invoice address if invoice info has address
-        if self.invoice_info_id and self.invoice_info_id.address:
-            pass
+    #     # Override partner invoice address if invoice info has address
+    #     if self.invoice_info_id and self.invoice_info_id.address:
+    #         pass
             
-        return invoice_vals
+    #     return invoice_vals
     
+    # def _prepare_invoice_lines(self):
+    #     """Prepare invoice line values"""
+    #     session_pricing = self._get_session_pricing()
+        
+    #     lines = []
+        
+    #     lines.append({
+    #         'name': f'iN-Clue {dict(self._fields["session_type"].selection).get(self.session_type)} - {self.name}',
+    #         'quantity': 1,
+    #         'price_unit': session_pricing.get('base_price', 1000.0),  # Default price
+    #         'account_id': self._get_income_account().id,
+    #     })
+        
+    #     participant_count = len(self.participant_ids)
+    #     if participant_count > session_pricing.get('included_participants', 10):
+    #         extra_participants = participant_count - session_pricing.get('included_participants', 10)
+    #         lines.append({
+    #             'name': f'Additional participants ({extra_participants} participants)',
+    #             'quantity': extra_participants,
+    #             'price_unit': session_pricing.get('per_participant_price', 50.0),
+    #             'account_id': self._get_income_account().id,
+    #         })
+        
+    #     return lines
+
     def _prepare_invoice_lines(self):
-        """Prepare invoice line values"""
-        session_pricing = self._get_session_pricing()
-        
-        lines = []
-        
-        lines.append({
-            'name': f'iN-Clue {dict(self._fields["session_type"].selection).get(self.session_type)} - {self.name}',
+        """Prepare invoice line using the kickoff session product"""
+        self.ensure_one()
+
+        if self.session_type != 'kickoff':
+            return []  # Only kickoff is billed
+
+        # Find product
+        product = self.env['product.product'].search([
+            ('product_tmpl_id.is_inclue_session', '=', True),
+            ('product_tmpl_id.is_inclue_session', '=', 'kickoff')
+        ], limit=1)
+
+        if not product:
+            raise UserError("Kickoff session product not found. Please configure it in the Products module.")
+
+        # Build line
+        return [{
+            'product_id': product.id,
+            'name': product.name,
             'quantity': 1,
-            'price_unit': session_pricing.get('base_price', 1000.0),  # Default price
-            'account_id': self._get_income_account().id,
-        })
-        
-        participant_count = len(self.participant_ids)
-        if participant_count > session_pricing.get('included_participants', 10):
-            extra_participants = participant_count - session_pricing.get('included_participants', 10)
-            lines.append({
-                'name': f'Additional participants ({extra_participants} participants)',
-                'quantity': extra_participants,
-                'price_unit': session_pricing.get('per_participant_price', 50.0),
-                'account_id': self._get_income_account().id,
-            })
-        
-        return lines
+            'price_unit': product.lst_price,
+            'account_id': product.property_account_income_id.id or self._get_income_account().id,
+        }]
+
     
-    def _get_session_pricing(self):
-        """Get pricing configuration for different session types"""
-        pricing = {
-            'kickoff': {
-                'base_price': 2000.0,
-                'included_participants': 15,
-                'per_participant_price': 75.0
-            },
-            'followup1': {
-                'base_price': 1500.0,
-                'included_participants': 15,
-                'per_participant_price': 50.0
-            },
-            'followup2': {
-                'base_price': 1500.0,
-                'included_participants': 15,
-                'per_participant_price': 50.0
-            },
-            'followup3': {
-                'base_price': 1500.0,
-                'included_participants': 15,
-                'per_participant_price': 50.0
-            },
-            'followup4': {
-                'base_price': 1500.0,
-                'included_participants': 15,
-                'per_participant_price': 50.0
-            },
-            'followup5': {
-                'base_price': 1500.0,
-                'included_participants': 15,
-                'per_participant_price': 50.0
-            },
-            'followup6': {
-                'base_price': 1800.0,
-                'included_participants': 15,
-                'per_participant_price': 60.0
-            },
-        }
+    # def _get_session_pricing(self):
+    #     """Get pricing configuration for different session types"""
+    #     pricing = {
+    #         'kickoff': {
+    #             'base_price': 2000.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 75.0
+    #         },
+    #         'followup1': {
+    #             'base_price': 1500.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 50.0
+    #         },
+    #         'followup2': {
+    #             'base_price': 1500.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 50.0
+    #         },
+    #         'followup3': {
+    #             'base_price': 1500.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 50.0
+    #         },
+    #         'followup4': {
+    #             'base_price': 1500.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 50.0
+    #         },
+    #         'followup5': {
+    #             'base_price': 1500.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 50.0
+    #         },
+    #         'followup6': {
+    #             'base_price': 1800.0,
+    #             'included_participants': 15,
+    #             'per_participant_price': 60.0
+    #         },
+    #     }
         
-        return pricing.get(self.session_type, {'base_price': 1000.0, 'included_participants': 10, 'per_participant_price': 50.0})
+    #     return pricing.get(self.session_type, {'base_price': 1000.0, 'included_participants': 10, 'per_participant_price': 50.0})
     
     def _get_income_account(self):
         """Get the income account for invoicing"""
         income_account = self.env['account.account'].search([
             ('account_type', '=', 'income'),
-            ('company_id', '=', self.env.company.id)
+            ('company_id', '=', 1)
         ], limit=1)
         
         if not income_account:
@@ -847,3 +997,61 @@ class InclueEvent(models.Model):
         except Exception as e:
             _logger.error("Error in send_pre_session_reminders: %s", str(e))
             return {'error': str(e)}
+        
+    @api.model
+    def send_team_lead_reminders(self):
+        """
+        Send reminder emails to team leads 2 weeks before kickoff,
+        or immediately if within 14 days and not yet sent.
+        """
+        try:
+            today = fields.Date.today()
+            max_date = today + timedelta(days=14)
+
+            # Only filter by is_inclue_event and kickoff + not yet sent
+            events = self.search([
+                ('is_inclue_event', '=', True),
+                ('session_type', '=', 'kickoff'),
+                ('team_lead_email_sent', '=', False),
+                ('date_begin', '<=', max_date),
+                ('active', '=', True),
+            ])
+
+            template = self.env.ref('inclue-consolidated-approach.email_template_team_lead_reminder', raise_if_not_found=False)
+            if not template:
+                _logger.error("Team Lead email template not found!")
+                return
+
+            sent = 0
+            for event in events:
+                # Resolve leader name and email (fallback to parent kickoff if not set)
+                team_leader_name = event.team_leader or event.parent_kickoff_id.team_leader
+                team_leader_email = event.team_leader_email or event.parent_kickoff_id.team_leader_email
+
+                if not team_leader_email:
+                    _logger.warning("Skipping event ID %s due to missing team lead email", event.id)
+                    continue
+
+                try:
+                    mail_values = template.generate_email(event.id, fields=['subject', 'body_html', 'email_from', 'email_to'])
+                    mail_values['email_to'] = team_leader_email
+                    mail_values['email_from'] = event.company_id.email or self.env.user.email
+
+                    mail = self.env['mail.mail'].create(mail_values)
+                    mail.send()
+
+                    event.write({
+                        'team_lead_email_sent': True,
+                        'team_lead_email_sent_date': fields.Datetime.now()
+                    })
+
+                    _logger.info("Sent team lead reminder for event ID %s to %s", event.id, team_leader_email)
+                    sent += 1
+
+                except Exception as e:
+                    _logger.error("Error sending team lead email for event %s: %s", event.id, str(e))
+
+            _logger.info("Team lead reminder summary: %d emails sent", sent)
+
+        except Exception as e:
+            _logger.error("Error in send_team_lead_reminders: %s", str(e))

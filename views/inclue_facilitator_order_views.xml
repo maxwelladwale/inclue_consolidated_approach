@@ -252,6 +252,8 @@
 
     <record id="action_inclue_card_products" model="ir.actions.act_window">
       <field name="name">iN-Clue Card Products</field>
+      <!-- <field name="is_inclue_session" attrs="{'invisible': [('is_inclue_card', '=', True)]}"/> -->
+
       <field name="res_model">product.template</field>
       <field name="view_mode">tree,form</field>
       <field name="domain">[('is_inclue_card', '=', True)]</field>

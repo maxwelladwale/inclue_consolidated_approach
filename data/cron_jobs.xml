@@ -41,5 +41,18 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=9, minute=0, second=0)"/>
         </record>
 
+        <record id="cron_team_lead_reminder" model="ir.cron">
+            <field name="name">iN-Clue: Send Team Lead Reminder Emails</field>
+            <field name="model_id" ref="event.model_event_event"/>
+            <field name="state">code</field>
+            <field name="code">model.send_team_lead_reminders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+            <field name="doall" eval="False"/>
+            <!-- Optional: Run daily at 10:00 AM -->
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0)"/>
+        </record>
     </data>
 </odoo>
