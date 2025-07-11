@@ -30,7 +30,7 @@
     'external_dependencies': {
         'python': ['reportlab'],
     },
-    
+
     'data': [
         # Security
         'security/security.xml',
@@ -42,7 +42,7 @@
         # 'data/sequences.xml',
         'data/cron_jobs.xml',
         'data/email_template_pre_session.xml',
-        # 'data/email_template_team_lead_reminder.xml',
+        'data/email_template_team_lead_reminder.xml',
         # 'data/reset_password_template.xml',
         # 'data/email_templates.xml',
         
