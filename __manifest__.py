@@ -26,6 +26,11 @@
         'sale',
         'hr',
     ],
+
+    'external_dependencies': {
+        'python': ['reportlab'],
+    },
+    
     'data': [
         # Security
         'security/security.xml',
