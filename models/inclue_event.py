@@ -1055,3 +1055,106 @@ class InclueEvent(models.Model):
 
         except Exception as e:
             _logger.error("Error in send_team_lead_reminders: %s", str(e))
+
+
+    @api.model
+    def send_monthly_hr_reports(self):
+        """Cron job: Send monthly completion reports to HR contacts"""
+        try:
+            from datetime import datetime, timedelta
+            from calendar import monthrange
+            
+            # Get last month's date range
+            today = fields.Date.today()
+            last_month = today.replace(day=1) - timedelta(days=1)
+            first_day = last_month.replace(day=1)
+            last_day = last_month.replace(day=monthrange(last_month.year, last_month.month)[1])
+            
+            _logger.info("Processing HR reports for %s to %s", first_day, last_day)
+            
+            # Find completed journeys from last month
+            completed_surveys = self.env['survey.user_input'].search([
+                ('is_completion_survey', '=', True),
+                ('state', '=', 'done'),
+                ('create_date', '>=', fields.Datetime.to_datetime(first_day)),
+                ('create_date', '<=', fields.Datetime.to_datetime(last_day)),
+                ('completion_journey_id', '!=', False)
+            ])
+            
+            # Group by HR contact
+            hr_groups = {}
+            for survey in completed_surveys:
+                journey = survey.completion_journey_id
+                hr_contact = journey.hr_contact_id
+                
+                if hr_contact and hr_contact.email:
+                    if hr_contact.id not in hr_groups:
+                        hr_groups[hr_contact.id] = {
+                            'hr_contact': hr_contact,
+                            'surveys': []
+                        }
+                    hr_groups[hr_contact.id]['surveys'].append(survey)
+            
+            # Send reports to each HR contact
+            for hr_data in hr_groups.values():
+                self._send_hr_monthly_report(hr_data, first_day, last_day)
+            
+            _logger.info("Sent monthly HR reports to %d HR contacts", len(hr_groups))
+            
+        except Exception as e:
+            _logger.error("Error in monthly HR reporting: %s", str(e))
+    
+    def _send_hr_monthly_report(self, hr_data, first_day, last_day):
+        """Send monthly report to single HR contact"""
+        try:
+            hr_contact = hr_data['hr_contact']
+            surveys = hr_data['surveys']
+            
+            # Generate consolidated PDF
+            pdf_path = self._generate_hr_monthly_pdf(hr_contact, surveys, first_day, last_day)
+            
+            if pdf_path:
+                # Send email
+                template_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                    <h2 style="color: #2c3e50;">Monthly iN-Clue Journey Completion Report</h2>
+                    
+                    <p>Dear {hr_contact.name},</p>
+                    
+                    <p>Please find attached the monthly completion report for teams under your supervision.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <h3 style="margin-top: 0;">Report Summary:</h3>
+                        <ul>
+                            <li><strong>Period:</strong> {first_day.strftime('%B %Y')}</li>
+                            <li><strong>Completed Teams:</strong> {len(surveys)}</li>
+                            <li><strong>Report Date:</strong> {fields.Date.today().strftime('%B %d, %Y')}</li>
+                        </ul>
+                    </div>
+                    
+                    <p>Thank you for supporting the iN-Clue Journey program.</p>
+                    
+                    <p>Best regards,<br/>The iN-Clue Team</p>
+                </div>
+                """
+                
+                mail_values = {
+                    'subject': f'Monthly iN-Clue Completion Report - {first_day.strftime("%B %Y")}',
+                    'body_html': template_body,
+                    'email_to': hr_contact.email,
+                    'email_from': self.env.company.email or 'noreply@inclue.com',
+                    'attachment_ids': [(0, 0, {
+                        'name': f'Monthly_Report_{first_day.strftime("%Y_%m")}.pdf',
+                        'datas': self._encode_pdf_file(pdf_path),
+                        'res_model': 'event.event',
+                        'res_id': self.id,
+                    })]
+                }
+                
+                mail = self.env['mail.mail'].create(mail_values)
+                mail.send()
+                
+                _logger.info("Sent monthly report to HR: %s", hr_contact.email)
+                
+        except Exception as e:
+            _logger.error("Error sending HR monthly report: %s", str(e))
