@@ -2,7 +2,8 @@ from odoo import models, fields, api
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
-    
+    is_inclue_session = fields.Boolean('iN-Clue Session Product')
+
     is_inclue_card = fields.Boolean('iN-Clue Card Product', default=False)
     inclue_card_type = fields.Selection([
         ('gift_card', 'Gift Card'),

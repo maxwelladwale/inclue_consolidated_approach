@@ -1,0 +1,12 @@
+<odoo>
+  <record id="product_inclue_new_card" model="product.template">
+    <field name="name">iN-Clue Bonus Card</field>
+    <field name="type">consu</field> <!-- consumable -->
+    <field name="list_price">0.00</field>
+    <field name="sale_ok" eval="True"/>
+    <field name="purchase_ok" eval="False"/>
+    <field name="taxes_id" eval="[(6, 0, [ref('account.tax_19')])]"/>
+    <field name="supplier_taxes_id" eval="[(6, 0, [ref('account.tax_16_purchase')])]"/>
+    <field name="default_code">INCLUE-BONUS</field>
+  </record>
+</odoo>

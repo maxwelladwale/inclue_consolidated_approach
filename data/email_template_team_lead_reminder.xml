@@ -1,0 +1,77 @@
+<odoo>
+    <data>
+        <record id="email_template_team_lead_reminder" model="mail.template">
+            <field name="name">iN-Clue: Team Lead Welcome Email</field>
+            <field name="model_id" ref="event.model_event_event"/>
+            <field name="subject">Welcome to the iN-Clue Journey with Your Team</field>
+            <field name="email_to"></field>
+            <field name="email_from"></field>
+            <field name="body_html">
+                &lt;div style="font-family: Georgia, serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px;"&gt;
+                    &lt;h2 style="color: #2E4053; font-size: 22px; margin-top: 0;"&gt;Welcome to the iN-Clue Journey&lt;/h2&gt;
+
+                    &lt;p&gt;Dear &lt;t t-esc="object.resolved_team_leader_name"/&gt;,&lt;/p&gt;
+
+                    &lt;p style="margin-bottom: 20px;"&gt;
+                        Congratulations — you and your team are about to embark on the <strong>iN-Clue Journey</strong>.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        As a manager, it's helpful to have some context about why this journey was created and what to expect — without giving too much away so you can enjoy it just like the rest of your team.
+                    &lt;/p&gt;
+
+                    &lt;hr style="border: none; border-top: 1px solid #ccc; margin: 30px 0;" /&gt;
+
+                    &lt;p&gt;
+                        Creating a safe and healthy work environment isn't just the manager's responsibility.
+                        Just like physical safety, <strong>psychological safety is a shared responsibility</strong> — we all play a role in creating it.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        The difference? While physical safety often relies on common rules for everyone, <em>psychological safety is more nuanced</em>. It's shaped by our individual experiences and needs.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        As a manager, it's not always easy to focus on this, make time for it, or find the right language that is respectful without feeling intrusive.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        <strong>That's why we created the iN-Clue Journey.</strong>
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        The experience helps people connect with themselves and with each other — at their own pace.
+                        The first session offers an opportunity to move beyond roles and assumptions, and to meet each other on a deeper human level.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        After that, your team will take part in <strong>6 short follow-up sessions</strong> (each lasting no more than 35 minutes), where you'll explore six aspects of psychological safety — which you experienced during the first session — and reflect on how your team is doing.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        These moments help build shared language and awareness that can support stronger collaboration.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        The entire process will be facilitated by your certified internal facilitator:
+                        &lt;strong&gt;&lt;t t-esc="object.facilitator_id.name"/&gt;&lt;/strong&gt;.
+                    &lt;/p&gt;
+
+                    &lt;p&gt;
+                        To track the impact of the journey, your team will be invited to complete a short 6-question survey before and after the first session, and again after the final follow-up session.
+                    &lt;/p&gt;
+
+                    &lt;p style="margin-top: 30px;"&gt;
+                        Wishing you a meaningful and rewarding journey,
+                    &lt;/p&gt;
+
+                    &lt;p&gt;Warm regards,&lt;/p&gt;
+
+                    &lt;p&gt;&lt;strong&gt;Alan De Bruyne&lt;/strong&gt;&lt;br/&gt;Creator of the iN-Clue Journey&lt;/p&gt;
+
+                    &lt;p style="font-size: 14px; margin-top: 20px;"&gt;&lt;em&gt;P.S. Let's connect on LinkedIn&lt;/em&gt;&lt;/p&gt;
+                &lt;/div&gt;
+            </field>
+        </record>
+    </data>
+</odoo>

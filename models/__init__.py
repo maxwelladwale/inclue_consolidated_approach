@@ -2,6 +2,7 @@ from . import inclue_survey_config
 from . import inclue_event  
 from . import inclue_participant
 from . import res_partner
+from . import res_users
 from . import inclue_facilitator_order
 from . import inclue_event_invoice_info
 from . import survey_user_input

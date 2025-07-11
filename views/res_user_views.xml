@@ -1,0 +1,32 @@
+<odoo>
+    <record id="view_users_form_facilitator" model="ir.ui.view">
+        <field name="name">res.users.form.facilitator.inherit</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <!-- Insert checkbox -->
+            <xpath expr="//field[@name='signature']" position="after">
+                <field name="is_facilitator"/>
+            </xpath>
+            <xpath expr="//field[@name='signature']" position="after">
+                <field name="is_country_manager"/>
+            </xpath>
+
+            <!-- Add a tab for facilitator info -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Facilitator Info" attrs="{'invisible': [('is_facilitator', '=', False)]}">
+                    <group>
+                        <field name="facilitation_count"/>
+                    </group>
+                    <field name="facilitated_event_ids" readonly="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="date_begin"/>
+                            <field name="session_type"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
