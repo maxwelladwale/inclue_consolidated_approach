@@ -44,7 +44,7 @@
                 &lt;hr style="border: none; height: 2px; background: linear-gradient(90deg, transparent, #8BC34A, transparent); margin: 35px 0;" /&gt;
 
                 &lt;div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #e9ecef;"&gt;
-                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt;🛡️ Psychological Safety: A Shared Responsibility&lt;/h3&gt;
+                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt; Psychological Safety: A Shared Responsibility&lt;/h3&gt;
                     &lt;p style="margin: 0 0 15px 0;"&gt;
                         Creating a safe and healthy work environment isn't just the manager's responsibility.
                         Just like physical safety, &lt;strong style="color: #8BC34A;"&gt;psychological safety is a shared responsibility&lt;/strong&gt; — we all play a role in creating it.
@@ -65,7 +65,7 @@
                 &lt;/div&gt;
 
                 &lt;div style="background: linear-gradient(135deg, #ffffff, #f8f9fa); padding: 25px; border-radius: 12px; margin: 25px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.05);"&gt;
-                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt;🤝 What to Expect&lt;/h3&gt;
+                    &lt;h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;"&gt;What to Expect&lt;/h3&gt;
                     &lt;p style="margin: 0 0 15px 0;"&gt;
                         The experience helps people connect with themselves and with each other — at their own pace.
                         The first session offers an opportunity to move beyond roles and assumptions, and to meet each other on a deeper human level.
@@ -80,13 +80,13 @@
                 &lt;/p&gt;
 
                 &lt;div style="background: linear-gradient(135deg, #8BC34A15, #7CB34215); padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;"&gt;
-                    &lt;p style="margin: 0 0 10px 0; color: #2c3e50;"&gt;👨‍🏫 &lt;strong&gt;Your Certified Facilitator&lt;/strong&gt;&lt;/p&gt;
+                    &lt;p style="margin: 0 0 10px 0; color: #2c3e50;"&gt; &lt;strong&gt;Your Certified Facilitator&lt;/strong&gt;&lt;/p&gt;
                     &lt;p style="margin: 0; font-size: 20px; color: #8BC34A; font-weight: 600;"&gt;&lt;t t-esc="object.facilitator_id.name"/&gt;&lt;/p&gt;
                 &lt;/div&gt;
 
                 &lt;div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #3498db;"&gt;
                     &lt;p style="margin: 0; color: #2c3e50;"&gt;
-                        📊 To track the impact of the journey, your team will be invited to complete a short 6-question survey before and after the first session, and again after the final follow-up session.
+                        To track the impact of the journey, your team will be invited to complete a short 6-question survey before and after the first session, and again after the final follow-up session.
                     &lt;/p&gt;
                 &lt;/div&gt;
 
