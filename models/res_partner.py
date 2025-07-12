@@ -32,6 +32,20 @@ class ResPartner(models.Model):
         default=0,
         help="Rank of this partner as a customer"
     )
+
+    managed_countries_json = fields.Json(
+        string='Managed Countries Configuration',
+        help='JSON configuration for countries managed by this country manager',
+        default=lambda self: {'country_ids': [], 'updated_by': None, 'updated_date': None}
+    )
+
+    managed_country_ids = fields.Many2many(
+        'res.country',
+        compute='_compute_managed_country_ids',
+        string='Managed Countries (Computed)',
+        help='Computed field based on JSON configuration'
+    )
+    
     is_facilitator = fields.Boolean('Is Facilitator', default=False)
     is_country_manager = fields.Boolean('Is Country Manager', default=False)
     facilitated_event_ids = fields.One2many('event.event', 'facilitator_id', string='Facilitated Events')
@@ -102,3 +116,73 @@ class ResPartner(models.Model):
         _logger.info("Finished updating %d partner records with contact flags", len(all_partners))
         
         return True
+
+    @api.depends('managed_countries_json')
+    def _compute_managed_country_ids(self):
+        """Compute managed countries from JSON field"""
+        for record in self:
+            if record.managed_countries_json and record.managed_countries_json.get('country_ids'):
+                country_ids = record.managed_countries_json['country_ids']
+                record.managed_country_ids = [(6, 0, country_ids)]
+            else:
+                record.managed_country_ids = [(5, 0, 0)]  # Clear all
+    
+    def get_managed_country_ids(self):
+        """Get list of managed country IDs from JSON"""
+        if self.managed_countries_json:
+            return self.managed_countries_json.get('country_ids', [])
+        return []
+    
+    def set_managed_countries(self, country_ids, updated_by=None):
+        """Set managed countries with metadata"""
+        from datetime import datetime
+        
+        self.managed_countries_json = {
+            'country_ids': country_ids,
+            'updated_by': updated_by or self.env.user.name,
+            'updated_date': datetime.now().isoformat(),
+            'total_countries': len(country_ids)
+        }
+    
+    def add_managed_country(self, country_id):
+        """Add a country to managed list"""
+        current_ids = self.get_managed_country_ids()
+        if country_id not in current_ids:
+            current_ids.append(country_id)
+            self.set_managed_countries(current_ids)
+    
+    def remove_managed_country(self, country_id):
+        """Remove a country from managed list"""
+        current_ids = self.get_managed_country_ids()
+        if country_id in current_ids:
+            current_ids.remove(country_id)
+            self.set_managed_countries(current_ids)
+    
+    def manages_country(self, country_id):
+        """Check if this partner manages the given country"""
+        return country_id in self.get_managed_country_ids()
+    
+    def get_managed_countries(self):
+        """Get managed countries as recordset"""
+        country_ids = self.get_managed_country_ids()
+        return self.env['res.country'].browse(country_ids)
+    
+    def get_managed_countries_info(self):
+        """Get detailed info about managed countries"""
+        if not self.managed_countries_json:
+            return {}
+        
+        return {
+            'countries': self.get_managed_countries().mapped('name'),
+            'country_count': len(self.get_managed_country_ids()),
+            'last_updated': self.managed_countries_json.get('updated_date'),
+            'updated_by': self.managed_countries_json.get('updated_by')
+        }
+    
+    @api.model
+    def get_country_managers_for_country(self, country_id):
+        """Get all country managers who manage a specific country"""
+        return self.search([
+            ('is_country_manager', '=', True),
+            ('managed_countries_json', '!=', False)
+        ]).filtered(lambda p: p.manages_country(country_id))

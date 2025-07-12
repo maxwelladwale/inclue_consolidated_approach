@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class InclueEvent(models.Model):
     _inherit = 'event.event'
-# ADDED
+
     team_lead_email_sent = fields.Boolean(default=False)
     team_lead_email_sent_date = fields.Datetime()
     resolved_team_leader_name = fields.Char(compute='_compute_team_leader', store=False)
@@ -40,13 +40,13 @@ class InclueEvent(models.Model):
         copy=False,
         help="Unique 8-character code for participants to join this journey"
     )
-
-    # team_leader_id = fields.Many2one(
-    #     'res.partner',
-    #     string='Team Leader',
-    #     help="The team leader associated with this cohort"
-    # )
-
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('confirmed', 'Confirmed'),
+        ('done', 'Done'),
+        ('cancelled', 'Cancelled'),
+    ], string="State", default='draft')
+    
     team_leader = fields.Char(
         string='Team Leader',
         help="The team leader associated with this cohort"
