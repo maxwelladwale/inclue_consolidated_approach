@@ -146,7 +146,6 @@ class ResUsers(models.Model):
         if not managed_countries:
             return
         
-        # You can create a custom wizard or view for statistics
         return {
             'name': f'Country Statistics - {self.name}',
             'type': 'ir.actions.act_window',
