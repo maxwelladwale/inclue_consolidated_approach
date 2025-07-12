@@ -4,28 +4,107 @@
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
-            <!-- Insert checkbox -->
+            <!-- Insert checkboxes after signature field -->
             <xpath expr="//field[@name='signature']" position="after">
-                <field name="is_facilitator"/>
-            </xpath>
-            <xpath expr="//field[@name='signature']" position="after">
-                <field name="is_country_manager"/>
+                <group string="User Types" col="2">
+                    <field name="is_facilitator"/>
+                    <field name="is_country_manager"/>
+                </group>
+                
+                <!-- Tags field like in contacts -->
+                <group string="Tags" col="1">
+                    <field name="category_id" widget="many2many_tags" 
+                           placeholder="Add tags (Internal Facilitator, External Facilitator, Country Manager, etc.)"
+                           options="{'color_field': 'color', 'no_create_edit': False}"/>
+                </group>
             </xpath>
 
-            <!-- Add a tab for facilitator info -->
+            <!-- tabs for facilitator and country manager info -->
             <xpath expr="//notebook" position="inside">
+                <!-- Facilitator Info Tab -->
                 <page string="Facilitator Info" attrs="{'invisible': [('is_facilitator', '=', False)]}">
                     <group>
-                        <field name="facilitation_count"/>
+                        <group string="Statistics">
+                            <field name="facilitation_count"/>
+                        </group>
                     </group>
-                    <field name="facilitated_event_ids" readonly="1">
-                        <tree>
-                            <field name="name"/>
-                            <field name="date_begin"/>
-                            <field name="session_type"/>
-                        </tree>
-                    </field>
+                    <group string="Facilitated Events">
+                        <field name="facilitated_event_ids" nolabel="1" readonly="1">
+                            <tree>
+                                <field name="name"/>
+                                <field name="date_begin"/>
+                                <field name="session_type"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                    </group>
                 </page>
+                
+                <!-- Country Manager Tab -->
+                <page string="Country Management" attrs="{'invisible': [('is_country_manager', '=', False)]}">
+                    <group>
+                        <group string="Managed Countries Selection">
+                            <field name="managed_country_ids" nolabel="1" 
+                                   widget="many2many" 
+                                   domain="[('code', '!=', False)]"
+                                   placeholder="Select countries to manage..."
+                                   help="Select the countries this user will manage orders for"/>
+                        </group>
+                        
+                        <group string="Quick Add Countries" attrs="{'invisible': [('managed_country_ids', '!=', [])]}">
+                            <div class="o_row">
+                                <button name="action_add_common_countries" type="object" 
+                                        string="Add Common Countries" class="btn-link"
+                                        help="Quickly add commonly managed countries"/>
+                                <button name="action_add_eu_countries" type="object" 
+                                        string="Add EU Countries" class="btn-link"
+                                        help="Add all EU countries to managed list"/>
+                            </div>
+                        </group>
+                        
+                        <group string="Configuration Info" attrs="{'invisible': [('managed_countries_json', '=', False)]}">
+                            <label for="managed_countries_json" string="Configuration Details"/>
+                            <div>
+                                <field name="managed_countries_json" widget="json" readonly="1" nolabel="1"/>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <!-- Country Management Actions -->
+                    <div class="oe_button_box" name="country_actions">
+                        <button name="action_view_country_orders" type="object" 
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                attrs="{'invisible': [('managed_country_ids', '=', [])]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">View Orders</span>
+                                <span class="o_stat_text">From Managed Countries</span>
+                            </div>
+                        </button>
+                        
+                        <button name="action_country_statistics" type="object" 
+                                class="oe_stat_button" icon="fa-bar-chart"
+                                attrs="{'invisible': [('managed_country_ids', '=', [])]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Country</span>
+                                <span class="o_stat_text">Statistics</span>
+                            </div>
+                        </button>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Create a simplified widget for country selection -->
+    <record id="view_users_form_country_widget" model="ir.ui.view">
+        <field name="name">res.users.form.country.widget</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="view_users_form_facilitator"/>
+        <field name="arch" type="xml">
+            <!-- Override the country field widget for better UX -->
+            <xpath expr="//field[@name='managed_country_ids']" position="attributes">
+                <attribute name="widget">many2many_checkboxes</attribute>
+                <attribute name="options">{'horizontal': False}</attribute>
             </xpath>
         </field>
     </record>
