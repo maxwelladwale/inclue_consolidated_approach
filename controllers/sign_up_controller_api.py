@@ -9,7 +9,58 @@ _logger = logging.getLogger(__name__)
 
 class SignupController(http.Controller):
     
-    @http.route('/api/v1/inclue/signup/validate', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/inclue/users/invite', type='json', auth='user', methods=['POST'], csrf=False)
+    def invite_user(self, **kwargs):
+        from datetime import datetime, timedelta
+        import uuid
+
+        try:
+            name = kwargs.get('name')
+            email = kwargs.get('email')
+            company_id = kwargs.get('company_id')  # Optional
+
+            if not name or not email:
+                return {'error': 'Name and email are required'}
+
+            existing_user = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
+            if existing_user:
+                return {'error': 'A user with this email already exists'}
+
+            signup_token = str(uuid.uuid4())
+            expiration = datetime.utcnow() + timedelta(days=2)
+
+            new_user = request.env['res.users'].sudo().create({
+                'name': name,
+                'login': email,
+                'email': email,
+                'company_id': int(company_id) if company_id else None,
+                'active': False,
+                'signup_token': signup_token,
+                'signup_type': 'invite',
+                'signup_expiration': expiration,
+            })
+
+            # Construct invitation URL
+            base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
+            invite_url = f"{base_url}/invite?token={signup_token}&email={email}&db={request.env.cr.dbname}"
+
+            # Send email (optional)
+            template = request.env.ref('auth_signup.set_password_email')
+            if template:
+                template.sudo().send_mail(new_user.id, force_send=True, email_values={'email_to': email})
+
+            return {
+                'success': True,
+                'message': 'User invited successfully',
+                'invite_url': invite_url
+            }
+
+        except Exception as e:
+            _logger.error(f"Error inviting user: {str(e)}")
+            return {'error': 'Server error while inviting user'}
+
+    
+    @http.route('/api/v1/inclue/signup/validate', type='json', auth='none', methods=['POST'], csrf=False)
     def validate_signup_token(self, **kwargs):
         """
         Validate a signup token and return user information
@@ -63,7 +114,7 @@ class SignupController(http.Controller):
             _logger.error(f"Signup validation error: {str(e)}")
             return {'error': 'Server error occurred'}
 
-    @http.route('/api/v1/inclue/signup/complete', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/inclue/signup/complete', type='json', auth='none', methods=['POST'], csrf=False)
     def complete_signup(self, **kwargs):
         """
         Complete the signup process by setting the user's password
