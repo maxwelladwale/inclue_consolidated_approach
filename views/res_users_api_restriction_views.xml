@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the res.users form view -->
+    <record id="view_users_form_api_restriction" model="ir.ui.view">
+        <field name="name">res.users.form.api.restriction</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Access Restriction group after signature field -->
+            <xpath expr="//field[@name='signature']" position="after">
+                <group string="Access Restrictions" col="2">
+                    <field name="api_only_access"/>
+                    <div attrs="{'invisible': [('api_only_access', '=', False)]}" 
+                         class="alert alert-warning" 
+                         role="alert">
+                        ⚠️ This user can only access the system via API, not the web interface
+                    </div>
+                </group>
+            </xpath>
+
+            <!-- Add new tab for API access management -->
+            <xpath expr="//notebook" position="inside">
+                <page string="API Access Control">
+                    <group>
+                        <group string="Access Configuration">
+                            <field name="api_only_access"/>
+                        </group>
+                        <group string="Access History">
+                            <field name="last_api_login" readonly="1"/>
+                            <field name="last_web_login" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-info" role="alert"
+                         attrs="{'invisible': [('api_only_access', '=', False)]}">
+                        <h4>🔒 API-Only Access Enabled</h4>
+                        <p>This user can only access the system through API endpoints. Web interface access is blocked.</p>
+                        <ul>
+                            <li>✅ Can login via React app API</li>
+                            <li>✅ Can use all API endpoints</li>
+                            <li>❌ Cannot access /web interface</li>
+                            <li>❌ Cannot access Odoo backend</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-success" role="alert"
+                         attrs="{'invisible': [('api_only_access', '=', True)]}">
+                        <h4>🌐 Full Access Enabled</h4>
+                        <p>This user can access both the API and web interface.</p>
+                        <ul>
+                            <li>✅ Can login via React app API</li>
+                            <li>✅ Can use all API endpoints</li>
+                            <li>✅ Can access /web interface</li>
+                            <li>✅ Can access Odoo backend</li>
+                        </ul>
+                    </div>
+                </page>
+            </xpath>
+
+            <!-- Add action button in header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_toggle_api_restriction" 
+                        type="object" 
+                        string="Toggle API Restriction" 
+                        class="oe_highlight"
+                        confirm="Are you sure you want to toggle API access restriction for this user?"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend tree view -->
+    <record id="view_users_tree_api_restriction" model="ir.ui.view">
+        <field name="name">res.users.tree.api.restriction</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='login_date']" position="after">
+                <field name="api_only_access" optional="show"/>
+                <field name="last_api_login" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend search view -->
+    <record id="view_users_search_api_restriction" model="ir.ui.view">
+        <field name="name">res.users.search.api.restriction</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="API Only Users" name="api_only_users" 
+                        domain="[('api_only_access', '=', True)]"/>
+                <filter string="Web Access Users" name="web_access_users" 
+                        domain="[('api_only_access', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -75,7 +75,7 @@
                         <button name="action_view_country_orders" type="object" 
                                 class="oe_stat_button" icon="fa-shopping-cart"
                                 attrs="{'invisible': [('managed_country_ids', '=', [])]}">
-                            <div class="o_field_widget o_stat_info">
+                            <div class="o_field_widget o_stat_info" role="button" aria-label="View orders from managed countries">
                                 <span class="o_stat_text">View Orders</span>
                                 <span class="o_stat_text">From Managed Countries</span>
                             </div>
@@ -84,10 +84,10 @@
                         <button name="action_country_statistics" type="object" 
                                 class="oe_stat_button" icon="fa-bar-chart"
                                 attrs="{'invisible': [('managed_country_ids', '=', [])]}">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Country</span>
-                                <span class="o_stat_text">Statistics</span>
-                            </div>
+                                <div class="o_field_widget o_stat_info" role="button" aria-label="Country statistics">
+                                    <span class="o_stat_text">Country</span>
+                                    <span class="o_stat_text">Statistics</span>
+                                </div>
                         </button>
                     </div>
                 </page>

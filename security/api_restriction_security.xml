@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Create a group for managing API restrictions -->
+        <record id="group_api_restriction_manager" model="res.groups">
+            <field name="name">API Restriction Manager</field>
+            <field name="category_id" ref="base.module_category_administration"/>
+            <field name="comment">Can manage API-only access restrictions for users</field>
+        </record>
+        
+        <!-- Add access rule for the new fields -->
+        <record id="access_rule_api_restriction" model="ir.rule">
+            <field name="name">API Restriction Access</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="groups" eval="[(4, ref('group_api_restriction_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="domain_force">['|', ('id', '=', user.id), ('api_only_access', '=', False)]</field>
+        </record>
+    </data>
+</odoo>
