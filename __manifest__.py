@@ -34,6 +34,7 @@
     'data': [
         # Security
         'security/security.xml',
+        'security/api_restriction_security.xml',
         'security/ir.model.access.csv',
         
         # Data
@@ -53,6 +54,7 @@
         # 'views/inclue_facilitator_order_views.xml',
         'views/inclue_invoice_info_views.xml',
         'views/menu_items.xml',
+        'views/res_users_api_restriction_views.xml',
         # 'views/inclue_event_views.xml',
         # 'views/inclue_participant_views.xml',
     ],
