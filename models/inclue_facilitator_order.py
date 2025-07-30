@@ -94,6 +94,24 @@ class FacilitatorOrder(models.Model):
         compute='_compute_legacy_quantities',
         store=False
     )
+
+    delivery_contact_name = fields.Char(
+        string='Delivery Contact Name',
+        tracking=True,
+        help="Name of the person at the delivery address"
+    )
+    
+    delivery_vat_number = fields.Char(
+        string='Delivery VAT Number',
+        tracking=True,
+        help="VAT number for the delivery location/company"
+    )
+    
+    delivery_email = fields.Char(
+        string='Delivery Contact Email',
+        tracking=True,
+        help="Email address of the contact person at delivery location"
+    )
     
     @api.depends('order_line.product_uom_qty', 'order_line.product_id')
     def _compute_legacy_quantities(self):
@@ -161,6 +179,12 @@ class FacilitatorOrder(models.Model):
             log_entries.append(f"👤 Customer: {self.partner_id.name}")
             log_entries.append(f"💰 Total Amount: {self.amount_total:.2f} {self.currency_id.name}")
             log_entries.append(f"🎯 Facilitator Type: {self.facilitator_type}")
+
+            if self.facilitator_type == 'external':
+                log_entries.append(f"📦 Delivery Contact: {self.delivery_contact_name}")
+                log_entries.append(f"🏢 Delivery VAT: {self.delivery_vat_number}")
+                log_entries.append(f"📧 Delivery Email: {self.delivery_email}")
+    
             
             # Step 1: Confirm order if not already confirmed
             if self.state in ['draft', 'sent']:
@@ -377,7 +401,10 @@ class FacilitatorOrder(models.Model):
             'po_number': data.get('po_number', ''),
             'contact_person': data.get('contact_person', ''),
             'pricelist_id': self._get_pricelist_id(data.get('company_id')),
-            # Add any other required fields here
+            
+            'delivery_contact_name': data.get('delivery_contact_name', ''),
+            'delivery_vat_number': data.get('delivery_vat_number', ''),
+            'delivery_email': data.get('delivery_email', ''),
         }
 
         # Create the sale order
