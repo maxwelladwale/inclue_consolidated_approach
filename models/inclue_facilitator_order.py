@@ -180,7 +180,7 @@ class FacilitatorOrder(models.Model):
             log_entries.append(f"💰 Total Amount: {self.amount_total:.2f} {self.currency_id.name}")
             log_entries.append(f"🎯 Facilitator Type: {self.facilitator_type}")
 
-            if self.facilitator_type == 'external':
+            if self.facilitator_type == 'internal':
                 log_entries.append(f"📦 Delivery Contact: {self.delivery_contact_name}")
                 log_entries.append(f"🏢 Delivery VAT: {self.delivery_vat_number}")
                 log_entries.append(f"📧 Delivery Email: {self.delivery_email}")
