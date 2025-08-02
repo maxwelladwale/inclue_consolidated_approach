@@ -51,6 +51,10 @@ class InclueEvent(models.Model):
         string='Team Leader',
         help="The team leader associated with this cohort"
     )
+    team_leader_family_name = fields.Char(
+        string='Team Leader Family Name',
+        help="The family name of the team leader associated with this cohort"
+    )
 
     team_leader_email = fields.Char(
         string='Team Leader Email',
