@@ -112,6 +112,8 @@ class FacilitatorOrder(models.Model):
         tracking=True,
         help="Email address of the contact person at delivery location"
     )
+    shipping_cost = fields.Float('Shipping Cost')
+
     
     @api.depends('order_line.product_uom_qty', 'order_line.product_id')
     def _compute_legacy_quantities(self):
@@ -409,6 +411,9 @@ class FacilitatorOrder(models.Model):
 
         # Create the sale order
         sale_order = self.env['sale.order'].create(order_vals)
+        _logger.info("SALES ORDER CREATINO")
+        _logger.info(sale_order)
+
 
         # Create order lines
         self._create_order_lines(sale_order, data.get('order_lines', []))
@@ -416,6 +421,20 @@ class FacilitatorOrder(models.Model):
         # Auto process (confirm + invoice + post) if flagged or default True
         if data.get('auto_process', True):
             self._auto_process_order(sale_order)
+
+        shipping_cost = data.get('shipping_cost', 0)
+        if shipping_cost > 0:
+            # You need a shipping product in your system
+            shipping_product = self.env.ref('your_module.product_shipping', raise_if_not_found=False)
+            
+            if shipping_product:
+                self.env['sale.order.line'].create({
+                    'order_id': sale_order.id,
+                    'product_id': shipping_product.id,
+                    'name': 'Shipping',
+                    'product_uom_qty': 1,
+                    'price_unit': shipping_cost,
+                })
 
         return sale_order
 
