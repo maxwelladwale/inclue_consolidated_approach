@@ -94,8 +94,8 @@
                 <filter string="Survey Sent" name="survey_sent" domain="[('survey_sent', '=', True)]"/>
                 <filter string="Survey Completed" name="survey_completed" domain="[('survey_completed', '=', True)]"/>
                 <separator/>
-                <filter string="Due for Follow-up" name="due_followup" 
-                        domain="[('next_session_date', '!=', False), ('next_session_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <!-- <filter string="Due for Follow-up" name="due_followup" 
+                        domain="[('next_session_date', '!=', False), ('next_session_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/> -->
                 <separator/>
                 <group expand="0" string="Group By">
                     <filter string="Event" name="group_event" context="{'group_by': 'event_id'}"/>

@@ -187,7 +187,7 @@ class InclueEvent(models.Model):
         return event
     
     def _create_event_invoice(self):
-        """Create an invoice for the iN-Clue event - IMPROVED VERSION"""
+        """Create an invoice for the iN-Clue event - IMPROVED VERSION WITH TOKEN"""
         self.ensure_one()
         
         if self.invoice_created:
@@ -209,6 +209,11 @@ class InclueEvent(models.Model):
             
             invoice = self.env['account.move'].create(invoice_vals)
             
+            # CRITICAL: Generate access token immediately after creation
+            invoice._portal_ensure_token()
+            _logger.info("Generated access token for new invoice ID %s: %s", 
+                        invoice.id, invoice.access_token[:8] + "..." if invoice.access_token else "FAILED")
+            
             # Post the invoice automatically
             if invoice.state == 'draft':
                 invoice.action_post()
@@ -224,7 +229,7 @@ class InclueEvent(models.Model):
                 'invoice_created': True
             })
             
-            _logger.info("Successfully created invoice ID %s for event ID %s", invoice.id, self.id)
+            _logger.info("Successfully created invoice ID %s for event ID %s with token", invoice.id, self.id)
             return invoice
             
         except Exception as e:
@@ -232,14 +237,14 @@ class InclueEvent(models.Model):
             raise UserError(f"Failed to create invoice: {str(e)}")
 
     def _prepare_invoice_vals_improved(self):
-        """Prepare invoice header values - IMPROVED"""
+        """Prepare invoice header values"""
         partner = self._get_invoice_partner()
         
         return {
             'move_type': 'out_invoice',
             'partner_id': partner.id,
             'invoice_date': fields.Date.today(),
-            'company_id': self.env.company.id,  # ✅ FIXED: Use current company
+            'company_id': self.env.company.id, 
             'currency_id': self.env.company.currency_id.id,
             'ref': self._get_invoice_reference(),
             'narration': self._get_invoice_narration(),
@@ -250,12 +255,12 @@ class InclueEvent(models.Model):
         """Prepare single invoice line - IMPROVED"""
         return {
             'product_id': product.id,
-            'name': f"{product.name} - {self.name}",  # More descriptive
+            'name': f"{product.name} - {self.name}",
             'quantity': 1,
             'price_unit': product.lst_price,
             'product_uom_id': product.uom_id.id,
             'account_id': product.property_account_income_id.id or self._get_income_account().id,
-            'tax_ids': [(6, 0, product.taxes_id.ids)],  # ✅ ADDED: Include taxes
+            'tax_ids': [(6, 0, product.taxes_id.ids)],
         }
 
     def _get_session_product(self):
