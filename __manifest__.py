@@ -46,6 +46,7 @@
         'data/email_template_team_lead_reminder.xml',
         # 'data/reset_password_template.xml',
         # 'data/email_templates.xml',
+        # 'data/report_invoice_extension.xml',
         
         # Views
         'views/inclue_survey_config_views.xml',

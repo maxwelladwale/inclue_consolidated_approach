@@ -2,39 +2,43 @@ from odoo import models, fields, api
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
-    is_inclue_session = fields.Boolean('iN-Clue Session Product')
-
-    is_inclue_card = fields.Boolean('iN-Clue Card Product', default=False)
+    
+    # InClue card specific fields
+    is_inclue_card = fields.Boolean(
+        string='Is InClue Card',
+        default=False,
+        help="Check if this product is an InClue educational card"
+    )
+    
     inclue_card_type = fields.Selection([
-        ('gift_card', 'Gift Card'),
-        ('followup_card', 'Follow-up Card'),
         ('participant_deck', 'Participant Deck'),
         ('facilitator_deck', 'Facilitator Deck'),
+        ('gift_card', 'Gift Card'),
+        ('followup_card', 'Follow-up Card'),
         ('promo_package', 'Promo Package'),
-    ], string='Card Type')
-
+    ], string='InClue Card Type', help="Type of InClue card product")
+    
     facilitator_access = fields.Selection([
         ('all', 'All Facilitators'),
-        ('external', 'External Facilitators Only'),
-        ('internal', 'Internal Facilitators Only'),
-    ], string='Facilitator Access', default='all')
+        ('internal', 'Internal Only'),
+        ('external', 'External Only'),
+    ], string='Facilitator Access', default='all',
+       help="Which type of facilitators can access this product")
     
     facilitator_pricing_type = fields.Selection([
-        ('same', 'Same Price for All Facilitators'),
-        ('different', 'Different Prices by Facilitator Type'),
-    ], string='Pricing Type', default='same')
+        ('same', 'Same Price for All'),
+        ('different', 'Different Prices'),
+    ], string='Pricing Type', default='same',
+       help="Whether pricing differs between facilitator types")
 
 class ProductProduct(models.Model):
     _inherit = 'product.product'
     
-    def get_facilitator_price(self, facilitator_type='external', pricelist=None):
-        """Get price for specific facilitator type"""
+    def get_facilitator_price(self, facilitator_type, pricelist):
+        """Get price based on facilitator type and pricelist"""
         self.ensure_one()
-        
-        if self.facilitator_pricing_type == 'different' and pricelist:
-            # Use pricelist to get facilitator-specific pricing
-            price = pricelist._get_product_price(self, 1.0, partner=None, date=fields.Date.today())
+        try:
+            price = pricelist.get_product_price(self, 1.0, None)
             return price
-        
-        # Default to list price
-        return self.list_price
+        except:
+            return self.list_price

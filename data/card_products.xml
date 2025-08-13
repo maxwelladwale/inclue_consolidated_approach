@@ -18,6 +18,7 @@
             <field name="is_inclue_card">True</field>
             <field name="inclue_card_type">gift_card</field>
             <field name="facilitator_pricing_type">same</field>
+            <field name="facilitator_access">all</field>  <!-- Added for consistency -->
             <field name="sale_ok">True</field>
             <field name="purchase_ok">False</field>
             <field name="description">Complimentary gift cards for iN-Clue participants</field>
@@ -33,6 +34,7 @@
             <field name="is_inclue_card">True</field>
             <field name="inclue_card_type">followup_card</field>
             <field name="facilitator_pricing_type">same</field>
+            <field name="facilitator_access">all</field>  <!-- Added for consistency -->
             <field name="sale_ok">True</field>
             <field name="purchase_ok">False</field>
             <field name="description">Complimentary follow-up cards for continued engagement</field>
@@ -48,6 +50,7 @@
             <field name="is_inclue_card">True</field>
             <field name="inclue_card_type">participant_deck</field>
             <field name="facilitator_pricing_type">different</field>
+            <field name="facilitator_access">all</field>  <!-- Added for consistency -->
             <field name="sale_ok">True</field>
             <field name="purchase_ok">False</field>
             <field name="description">Participant deck cards for iN-Clue sessions</field>
@@ -63,6 +66,7 @@
             <field name="is_inclue_card">True</field>
             <field name="inclue_card_type">facilitator_deck</field>
             <field name="facilitator_pricing_type">different</field>
+            <field name="facilitator_access">all</field>  <!-- Added for consistency -->
             <field name="sale_ok">True</field>
             <field name="purchase_ok">False</field>
             <field name="description">Facilitator deck cards for running iN-Clue sessions</field>
@@ -82,6 +86,18 @@
             <field name="sale_ok">True</field>
             <field name="purchase_ok">False</field>
             <field name="description">Promotional package exclusively for external facilitators</field>
+        </record>
+        
+        <record id="product_shipping_service" model="product.template">
+            <field name="name">Shipping Service</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product_category_inclue_cards"/>
+            <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="invoice_policy">delivery</field>
+            <field name="description">Shipping and delivery services for card orders</field>
         </record>
     </data>
 </odoo>

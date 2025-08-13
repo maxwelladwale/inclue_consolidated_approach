@@ -158,10 +158,10 @@
           <filter string="Done" name="state_done" domain="[('state','=','done')]"/>
           <filter string="Cancelled" name="state_cancel" domain="[('state','=','cancel')]"/>
           <separator/>
-          <filter string="This Month" name="this_month"
+          <!-- <filter string="This Month" name="this_month"
                   domain="[('create_date','&gt;=',
                             (context_today()+relativedelta(day=1))
-                             .strftime('%Y-%m-%d'))]"/>
+                             .strftime('%Y-%m-%d'))]"/> -->
           <group expand="0" string="Group By">
             <filter string="Facilitator" name="group_by_facilitator" context="{'group_by':'facilitator_id'}"/>
             <filter string="Facilitator Type" name="group_by_facilitator_type" context="{'group_by':'facilitator_type'}"/>
