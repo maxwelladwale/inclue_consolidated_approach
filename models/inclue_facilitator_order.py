@@ -191,16 +191,20 @@ class FacilitatorOrder(models.Model):
         return result
     
     def _auto_process_facilitator_order(self):
-        """Fixed auto-processing with proper invoice creation"""
+        """Complete auto-processing with WORKING email sending"""
+        from datetime import datetime, timedelta
+        
         self.ensure_one()
         
         processing_start = datetime.now()
         log_entries = []
+        created_invoices = []
         
         try:
             log_entries.append(f"🚀 AUTO-PROCESSING STARTED at {processing_start.strftime('%Y-%m-%d %H:%M:%S')}")
             log_entries.append(f"📋 Order: {self.name}")
             log_entries.append(f"👤 Customer: {self.partner_id.name}")
+            log_entries.append(f"📧 Customer Email: {self.partner_id.email or 'NO EMAIL'}")
             log_entries.append(f"💰 Total Amount: {self.amount_total:.2f} {self.currency_id.name}")
             log_entries.append(f"🎯 Facilitator Type: {self.facilitator_type}")
 
@@ -216,117 +220,37 @@ class FacilitatorOrder(models.Model):
             # Step 2: Create and process invoice
             log_entries.append("\n--- STEP 2: INVOICE PROCESSING ---")
             
-            # Check if we have deliverable lines
             deliverable_lines = self.order_line.filtered(lambda l: l.product_uom_qty > 0 and not l.display_type)
             
-            if deliverable_lines:
-                log_entries.append(f"💵 Found {len(deliverable_lines)} deliverable lines")
-                
-                # Check current invoice status
-                log_entries.append(f"📋 Current invoice status: {self.invoice_status}")
-                log_entries.append(f"📄 Existing invoices: {len(self.invoice_ids)}")
-                
-                if self.invoice_status in ['no', 'to invoice']:
-                    try:
-                        # Create invoice using the advance payment wizard
-                        log_entries.append("🧾 Creating invoice using advance payment wizard...")
-                        
-                        wizard_context = {
-                            'active_model': 'sale.order',
-                            'active_ids': [self.id],
-                            'active_id': self.id,
-                        }
-                        
-                        wizard = self.env['sale.advance.payment.inv'].with_context(wizard_context).create({
-                            'advance_payment_method': 'delivered',
-                        })
-                        
-                        # Create invoices
-                        result = wizard.create_invoices()
-                        log_entries.append("✅ Invoice creation wizard completed")
-                        
-                        # Get the created invoices
-                        invoices = self.invoice_ids
-                        log_entries.append(f"📄 Found {len(invoices)} invoice(s) after creation")
-                        
-                        if invoices:
-                            for invoice in invoices:
-                                log_entries.append(f"📋 Processing invoice: {invoice.name}")
-                                
-                                # Copy facilitator custom fields to invoice
-                                try:
-                                    facilitator_fields = {
-                                        'facilitator_type': self.facilitator_type,
-                                        'facility_language_id': self.facility_language_id.id if self.facility_language_id else False,
-                                        'shipping_address_custom': self.shipping_address_custom,
-                                        'contact_person': self.contact_person,
-                                        'invoice_company_name': self.invoice_company_name,
-                                        'invoice_address_custom': self.invoice_address_custom,
-                                        'po_number': self.po_number,
-                                        'delivery_contact_name': self.delivery_contact_name,
-                                        'delivery_vat_number': self.delivery_vat_number,
-                                        'delivery_email': self.delivery_email,
-                                    }
-                                    
-                                    invoice.write(facilitator_fields)
-                                    log_entries.append("✅ Custom fields copied to invoice")
-                                    
-                                except Exception as field_error:
-                                    log_entries.append(f"⚠️ Failed to copy custom fields: {str(field_error)}")
-                                
-                                log_entries.append(f"💰 Invoice Amount: {invoice.amount_total:.2f} {invoice.currency_id.name}")
-                                log_entries.append(f"📊 Tax Amount: {invoice.amount_tax:.2f}")
-                                log_entries.append(f"📊 Untaxed Amount: {invoice.amount_untaxed:.2f}")
-                                
-                                # Post the invoice
-                                if invoice.state == 'draft':
-                                    try:
-                                        invoice.action_post()
-                                        log_entries.append("✅ Invoice posted successfully")
-                                        log_entries.append(f"📋 Posted Invoice Number: {invoice.name}")
-                                    except Exception as post_error:
-                                        log_entries.append(f"❌ Failed to post invoice: {str(post_error)}")
-                                
-                                # Send invoice email
-                                try:
-                                    if invoice.state == 'posted':
-                                        invoice.action_invoice_sent()
-                                        log_entries.append("📧 Invoice email sent successfully")
-                                except Exception as email_error:
-                                    log_entries.append(f"⚠️ Email sending failed: {str(email_error)}")
-                                
-                                # Auto-register payment for internal orders if enabled
-                                if self.facilitator_type == 'internal' and self.auto_pay_internal:
-                                    log_entries.append("💳 Auto-registering payment (internal order)...")
-                                    if self._register_automatic_payment(invoice):
-                                        log_entries.append("✅ Payment registered automatically")
-                                    else:
-                                        log_entries.append("❌ Auto-payment failed")
-                        else:
-                            log_entries.append("❌ No invoices were created by wizard")
+            if deliverable_lines and self.invoice_status in ['no', 'to invoice']:
+                try:
+                    # Create invoice using wizard
+                    log_entries.append("🧾 Creating invoice using advance payment wizard...")
+                    
+                    wizard_context = {
+                        'active_model': 'sale.order',
+                        'active_ids': [self.id],
+                        'active_id': self.id,
+                    }
+                    
+                    wizard = self.env['sale.advance.payment.inv'].with_context(wizard_context).create({
+                        'advance_payment_method': 'delivered',
+                    })
+                    
+                    result = wizard.create_invoices()
+                    log_entries.append("✅ Invoice creation wizard completed")
+                    
+                    # Get the created invoices
+                    invoices = self.invoice_ids
+                    log_entries.append(f"📄 Found {len(invoices)} invoice(s) after creation")
+                    
+                    if invoices:
+                        for invoice in invoices:
+                            log_entries.append(f"📋 Processing invoice: {invoice.name}")
                             
-                            # Try alternative method
-                            log_entries.append("🔄 Trying alternative invoice creation...")
+                            # Copy facilitator custom fields to invoice
                             try:
-                                # Force invoice creation
-                                invoice_lines = []
-                                for line in deliverable_lines:
-                                    invoice_lines.append((0, 0, {
-                                        'name': line.name,
-                                        'product_id': line.product_id.id if line.product_id else False,
-                                        'quantity': line.product_uom_qty,
-                                        'price_unit': line.price_unit,
-                                        'tax_ids': [(6, 0, line.tax_id.ids)],
-                                        'sale_line_ids': [(6, 0, [line.id])],
-                                    }))
-                                
-                                invoice_vals = {
-                                    'move_type': 'out_invoice',
-                                    'partner_id': self.partner_id.id,
-                                    'invoice_origin': self.name,
-                                    'currency_id': self.currency_id.id,
-                                    'invoice_line_ids': invoice_lines,
-                                    # Copy facilitator fields immediately
+                                facilitator_fields = {
                                     'facilitator_type': self.facilitator_type,
                                     'facility_language_id': self.facility_language_id.id if self.facility_language_id else False,
                                     'shipping_address_custom': self.shipping_address_custom,
@@ -339,31 +263,127 @@ class FacilitatorOrder(models.Model):
                                     'delivery_email': self.delivery_email,
                                 }
                                 
-                                invoice = self.env['account.move'].create(invoice_vals)
-                                log_entries.append(f"✅ Alternative invoice created: {invoice.name}")
+                                invoice.write(facilitator_fields)
+                                log_entries.append("✅ Custom fields copied to invoice")
                                 
-                                # Link to sale order
-                                for line in invoice.invoice_line_ids:
-                                    line.sale_line_ids = [(6, 0, deliverable_lines.ids)]
-                                
-                                # Post the invoice
-                                if invoice.state == 'draft':
+                            except Exception as field_error:
+                                log_entries.append(f"⚠️ Failed to copy custom fields: {str(field_error)}")
+                            
+                            # Post the invoice
+                            if invoice.state == 'draft':
+                                try:
                                     invoice.action_post()
-                                    log_entries.append("✅ Alternative invoice posted")
-                                
-                            except Exception as alt_error:
-                                log_entries.append(f"❌ Alternative invoice creation failed: {str(alt_error)}")
+                                    log_entries.append("✅ Invoice posted successfully")
+                                    log_entries.append(f"📋 Posted Invoice Number: {invoice.name}")
+                                    
+                                    # Generate access token for portal/headless access
+                                    if not invoice.access_token:
+                                        invoice._portal_ensure_token()
+                                        log_entries.append(f"🔑 Access token generated: {invoice.access_token[:20]}...")
+                                    else:
+                                        log_entries.append(f"🔑 Access token already exists: {invoice.access_token[:20]}...")
+                                    
+                                    _logger.info('posted invoice')
+                                    
+                                    # Add to list for email sending later
+                                    created_invoices.append(invoice)
+                                    
+                                except Exception as post_error:
+                                    log_entries.append(f"❌ Failed to post invoice: {str(post_error)}")
+                    else:
+                        log_entries.append("❌ No invoices were created by wizard")
                         
-                    except Exception as wizard_error:
-                        log_entries.append(f"❌ Invoice creation failed: {str(wizard_error)}")
-                else:
-                    log_entries.append(f"ℹ️ Invoice status is '{self.invoice_status}', no new invoice needed")
-                    
+                except Exception as wizard_error:
+                    log_entries.append(f"❌ Invoice creation failed: {str(wizard_error)}")
             else:
-                log_entries.append("ℹ️ No deliverable lines found")
+                log_entries.append(f"ℹ️ Invoice status is '{self.invoice_status}', no new invoice needed")
             
-            # Step 3: Finalization
-            log_entries.append("\n--- STEP 3: FINALIZATION ---")
+            # Step 3: FIXED EMAIL PROCESSING
+            log_entries.append("\n--- STEP 3: FIXED EMAIL PROCESSING ---")
+
+            _logger.info("Starting FIXED email processing for created invoices")
+            _logger.info(f"Created invoices: {[inv.name for inv in created_invoices]}")
+
+            if created_invoices:
+                # Commit the transaction to ensure invoices are fully posted
+                self.env.cr.commit()
+                log_entries.append("💾 Database transaction committed")
+                
+                # Check SMTP configuration
+                smtp_server = self.env['ir.mail_server'].search([], limit=1)
+                if smtp_server:
+                    log_entries.append(f"📡 SMTP Server: {smtp_server.name}")
+                    log_entries.append(f"📡 Host: {smtp_server.smtp_host}:{smtp_server.smtp_port}")
+                    log_entries.append(f"📡 User: {smtp_server.smtp_user}")
+                    
+                    if 'ethereal' in smtp_server.smtp_host.lower():
+                        log_entries.append(f"🎭 ETHEREAL DETECTED!")
+                        log_entries.append(f"🎭 Login: https://ethereal.email/login")
+                        log_entries.append(f"🎭 Username: {smtp_server.smtp_user}")
+                        log_entries.append(f"🎭 Password: {smtp_server.smtp_pass}")
+                
+                for invoice in created_invoices:
+                    try:
+                        log_entries.append(f"\n📧 === SENDING EMAIL FOR INVOICE {invoice.name} ===")
+                        
+                        # Check recipient
+                        recipient_email = invoice.partner_id.email
+                        if not recipient_email:
+                            log_entries.append(f"❌ No email address for {invoice.partner_id.name}")
+                            continue
+                        
+                        log_entries.append(f"📬 Recipient: {recipient_email}")
+                        
+                        # Get email template
+                        template = self.env.ref('account.email_template_edi_invoice', raise_if_not_found=False)
+                        if not template:
+                            log_entries.append("❌ No invoice email template found!")
+                            continue
+                        
+                        log_entries.append(f"📧 Using template: {template.name}")
+                        
+                        # Count emails before sending
+                        mail_count_before = self.env['mail.mail'].search_count([])
+                        log_entries.append(f"📊 Mail queue count before: {mail_count_before}")
+                        
+                        # ACTUALLY SEND THE EMAIL
+                        try:
+                            template.send_mail(invoice.id, force_send=True)
+                            log_entries.append("✅ template.send_mail() completed")
+                        except Exception as send_error:
+                            log_entries.append(f"❌ send_mail failed: {str(send_error)}")
+                            continue
+                        
+                        # Count emails after sending
+                        mail_count_after = self.env['mail.mail'].search_count([])
+                        log_entries.append(f"📊 Mail queue count after: {mail_count_after}")
+                        
+                        if mail_count_after > mail_count_before:
+                            emails_created = mail_count_after - mail_count_before
+                            log_entries.append(f"✅ {emails_created} email(s) successfully sent!")
+                            
+                            # Check for recent emails
+                            recent_emails = self.env['mail.mail'].search([
+                                ('create_date', '>=', fields.Datetime.now() - timedelta(minutes=5))
+                            ], order='create_date desc', limit=3)
+                            
+                            for email in recent_emails:
+                                log_entries.append(f"📧 Email {email.id}: {email.subject} -> {email.email_to} (State: {email.state})")
+                                if email.failure_reason:
+                                    log_entries.append(f"   ❌ Failed: {email.failure_reason}")
+                        
+                        else:
+                            log_entries.append("⚠️ No emails were created - template may have issues")
+                        
+                    except Exception as email_error:
+                        log_entries.append(f"❌ Email processing failed: {str(email_error)}")
+                        import traceback
+                        log_entries.append(f"🔍 Traceback: {traceback.format_exc()}")
+            else:
+                log_entries.append("ℹ️ No new invoices to send emails for")
+            
+            # Step 4: Finalization
+            log_entries.append("\n--- STEP 4: FINALIZATION ---")
             processing_end = datetime.now()
             processing_duration = (processing_end - processing_start).total_seconds()
             
@@ -382,6 +402,7 @@ class FacilitatorOrder(models.Model):
             log_entries.append(f"🎉 Final State: {self.state}")
             log_entries.append(f"📄 Final Invoice Count: {final_invoice_count}")
             log_entries.append(f"📋 Invoice Names: {invoice_names}")
+            log_entries.append(f"📧 Emails Processed: {len(created_invoices)}")
             
             # Post success message with correct totals
             self.message_post(
@@ -392,6 +413,7 @@ class FacilitatorOrder(models.Model):
                     <li><strong>Amount:</strong> {self.amount_total:.2f} {self.currency_id.name}</li>
                     <li><strong>Final State:</strong> {self.state}</li>
                     <li><strong>Invoices:</strong> {invoice_names}</li>
+                    <li><strong>Emails Sent:</strong> {len(created_invoices)}</li>
                     <li><strong>Duration:</strong> {processing_duration:.2f} seconds</li>
                 </ul>
                 """,
@@ -401,6 +423,7 @@ class FacilitatorOrder(models.Model):
             _logger.info(f"=== AUTO-PROCESSING COMPLETED FOR ORDER {self.name} ===")
             _logger.info(f"Order Total: {self.amount_total}")
             _logger.info(f"Invoices Created: {invoice_names}")
+            _logger.info(f"Emails Sent: {len(created_invoices)}")
             return True
             
         except Exception as e:
@@ -420,7 +443,10 @@ class FacilitatorOrder(models.Model):
             
             _logger.error(f"Auto-processing failed for order {self.name}: {error_msg}")
             return False
-    
+
+    # END
+
+
     def _register_automatic_payment(self, invoice):
         """Register automatic payment for internal orders"""
         try:
